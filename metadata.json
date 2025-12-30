@@ -1,0 +1,7 @@
+{
+  "name": "Genesis Chat (A2UI)",
+  "description": "An AI-powered fitness operating system interface that generates dynamic UI widgets using the Gemini API.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
