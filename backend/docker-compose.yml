@@ -1,0 +1,21 @@
+# NGX A2UI Backend Docker Compose
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - PORT=8000
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=["http://localhost:3000", "http://localhost:5173", "*"]
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+# Usage:
+# 1. Create .env file with GOOGLE_API_KEY
+# 2. Run: docker-compose up --build
+# 3. Access: http://localhost:8000/health

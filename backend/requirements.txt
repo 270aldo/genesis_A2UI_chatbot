@@ -1,0 +1,20 @@
+# NGX A2UI Backend Dependencies
+# Python 3.12+
+
+# Core ADK (uses installed compatible version)
+google-adk>=1.1.0
+
+# Web Framework
+fastapi>=0.125.0
+uvicorn>=0.34.0
+
+# Data Validation
+pydantic>=2.10.0
+
+# Environment
+python-dotenv>=1.0.1
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+httpx>=0.28.0

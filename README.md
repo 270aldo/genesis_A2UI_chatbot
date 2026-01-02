@@ -1,20 +1,77 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# NGX GENESIS A2UI
 
-# Run and deploy your AI Studio app
+Multiagent AI fitness chatbot with React frontend and FastAPI + Google ADK backend.
 
-This contains everything you need to run your app locally.
+## Architecture
 
-View your app in AI Studio: https://ai.studio/apps/drive/1PSNNVgTODiBePe6Zjk_Un87Qr5LJdUcH
+```
+GENESIS (Orchestrator)
+    ├── BLAZE (Strength/Workouts) → workout-card
+    ├── SAGE (Nutrition/Meals) → meal-plan
+    ├── SPARK (Habits/Consistency) → checklist
+    ├── STELLA (Mindset/Analytics) → progress-dashboard
+    └── LOGOS (Education) → TEXT_ONLY
+```
 
-## Run Locally
+## Quick Start
 
-**Prerequisites:**  Node.js
+### Backend (FastAPI + ADK)
 
+```bash
+cd backend
+pip install -r requirements.txt
+cp .env.example .env  # Add GOOGLE_API_KEY
+python main.py        # Runs on port 8000
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Frontend (React + Vite)
+
+```bash
+cd frontend
+npm install
+npm run dev           # Runs on port 3000
+```
+
+## Project Structure
+
+```
+/
+├── frontend/         # React + Vite + TypeScript
+│   ├── App.tsx       # Main chat component
+│   ├── components/   # UI components
+│   ├── services/     # API client
+│   └── types.ts      # TypeScript types
+│
+├── backend/          # FastAPI + Google ADK
+│   ├── main.py       # API server
+│   ├── agent/        # ADK agents (genesis + 5 specialists)
+│   ├── tools/        # Widget generation tools
+│   ├── instructions/ # Agent system prompts
+│   └── schemas/      # Pydantic models
+│
+└── README.md         # This file
+```
+
+## API Response Format
+
+```json
+{
+  "text": "Agent response text",
+  "agent": "BLAZE",
+  "payload": {
+    "type": "workout-card",
+    "props": { ... }
+  }
+}
+```
+
+## Environment Variables
+
+### Backend (.env)
+- `GOOGLE_API_KEY` - Gemini API key (required)
+- `PORT` - Server port (default: 8000)
+- `CORS_ORIGINS` - Allowed origins (default: ["*"])
+
+## License
+
+MIT

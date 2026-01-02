@@ -1,0 +1,142 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+NGX A2UI Backend - FastAPI + Google ADK backend with 6 specialized AI agents for the NGX GENESIS chatbot. GENESIS orchestrates BLAZE (strength), SAGE (nutrition), SPARK (habits), STELLA (mindset), and LOGOS (education).
+
+## Quick Start
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env  # Add GOOGLE_API_KEY
+python main.py        # Runs on port 8000
+```
+
+## Development Commands
+
+| Command | Purpose |
+|---------|---------|
+| `python main.py` | Start FastAPI server on port 8000 |
+| `uvicorn main:app --reload` | Development server with hot reload |
+| `adk web ./agent` | ADK development UI for testing agents |
+| `pytest tests/ -v` | Run all tests |
+| `pytest tests/test_routing.py::test_blaze_routing -v` | Run single test |
+
+## Architecture
+
+### Agent Hierarchy
+```
+GENESIS (root_agent) → Routes to specialists based on intent
+├── BLAZE  → Strength training (workout-card, timer-widget)
+├── SAGE   → Nutrition (meal-plan, hydration-tracker, recipe-card)
+├── SPARK  → Habits (daily-checkin, checklist, quote-card)
+├── STELLA → Mindset/Analytics (progress-dashboard, insight-card, sleep-analysis)
+└── LOGOS  → Education (TEXT_ONLY - rarely uses widgets)
+```
+
+### Key Files
+- `main.py` - FastAPI server, `/api/chat` endpoint, response parsing
+- `agent/genesis.py` - Root orchestrator with `sub_agents=[blaze, sage, spark, stella, logos]`
+- `agent/specialists/*.py` - Each specialist loads instruction from `instructions/*.txt`
+- `tools/generate_widget.py` - Widget generation tool (14 widget types)
+- `schemas/response.py` - `AgentResponse(text, agent, payload)` - CRITICAL format
+
+### Response Format (CRITICAL - Frontend Depends on This)
+```python
+{
+    "text": "Response text",
+    "agent": "BLAZE",           # UPPERCASE required
+    "payload": {                # Optional
+        "type": "workout-card",
+        "props": {...}
+    }
+}
+```
+
+## ADK Patterns
+
+### Agent Definition
+```python
+from google.adk.agents import Agent
+
+agent = Agent(
+    name="agent_name",           # lowercase, unique
+    model="gemini-2.5-flash",    # always use this model
+    description="...",           # CRITICAL for routing - be specific with keywords
+    instruction=INSTRUCTION,     # from instructions/*.txt
+    tools=[generate_widget],
+    sub_agents=[...],            # only for orchestrators
+)
+```
+
+### Tool Definition (Simplified for ADK compatibility)
+```python
+# ADK doesn't support complex Annotated[Literal[...]] types
+# Use simple types: str, dict, int, float, bool
+def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
+    """Comprehensive docstring - LLM reads this."""
+    return {"type": widget_type, "props": props}
+```
+
+### Runner Usage (Async Generator)
+```python
+# runner.run_async() returns AsyncGenerator, not awaitable
+from google.genai import types
+
+user_content = types.Content(
+    role="user",
+    parts=[types.Part(text=message)]
+)
+
+async for event in runner.run_async(
+    user_id="default",
+    session_id=session_id,
+    new_message=user_content,
+):
+    final_result = event  # Capture events
+```
+
+## Agent Routing Reference
+
+| Query Contains | Routes To | Widget |
+|---------------|-----------|--------|
+| entrenamiento, fuerza, rutina, ejercicio | BLAZE | workout-card |
+| nutrición, comida, dieta, macros | SAGE | meal-plan |
+| hábitos, consistencia, motivación | SPARK | checklist/daily-checkin |
+| progreso, datos, análisis, mindset | STELLA | progress-dashboard |
+| por qué, explícame, concepto | LOGOS | None (TEXT_ONLY) |
+| hola, inicio | GENESIS | quick-actions |
+
+## Common Tasks
+
+### Adding a New Agent
+1. Create `agent/specialists/new_agent.py`
+2. Define instruction in `instructions/new_agent.txt`
+3. Add to `genesis.py` sub_agents list
+4. Update `agent/specialists/__init__.py` exports
+5. Add routing tests
+
+### Modifying Agent Personality
+1. Edit `instructions/{agent}.txt`
+2. Restart server (instructions loaded at startup)
+
+## Environment Variables
+
+- `GOOGLE_API_KEY` - Gemini API key (required)
+- `PORT` - Server port (default: 8000)
+- `CORS_ORIGINS` - JSON array of allowed origins (default: ["*"])
+
+## Gotchas
+
+- **Agent descriptions are CRITICAL**: LLM uses `description` to route between sub_agents
+- **Tool parameters must be simple types**: ADK can't parse `Annotated[Literal[...]]`
+- **Runner returns async generator**: Use `async for event in runner.run_async()`
+- **Message must be Content object**: Use `types.Content(role="user", parts=[types.Part(text=msg)])`
+- **Response JSON may be wrapped in markdown**: Parse `json ... ` blocks
+- **LOGOS rarely uses widgets**: It's primarily TEXT_ONLY
+
+## Dependencies
+
+Requires google-adk >= 1.1.0 (not 1.21.0 due to dependency conflicts with FastAPI).
