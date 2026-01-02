@@ -5,7 +5,7 @@ import {
 import { Message, Attachment, Session } from './types';
 import { COLORS, getAgentColor } from './constants';
 import { A2UIMediator } from './components/Widgets';
-import { generateContent } from './services/geminiService';
+import { generateContent } from './services/api';
 import { Sidebar } from './components/Sidebar';
 
 // Mock Data for Sessions

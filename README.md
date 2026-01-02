@@ -15,22 +15,54 @@ GENESIS (Orchestrator)
 
 ## Quick Start
 
-### Backend (FastAPI + ADK)
+### Option 1: Make Commands (Recommended)
 
 ```bash
+# Install dependencies
+make install
+
+# Configure environment
+cp backend/.env.example backend/.env  # Add GOOGLE_API_KEY
+
+# Run both services
+make dev
+```
+
+### Option 2: Manual Setup
+
+```bash
+# Backend
 cd backend
 pip install -r requirements.txt
 cp .env.example .env  # Add GOOGLE_API_KEY
 python main.py        # Runs on port 8000
-```
 
-### Frontend (React + Vite)
-
-```bash
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev           # Runs on port 3000
 ```
+
+### Option 3: Docker
+
+```bash
+# Set API key
+export GOOGLE_API_KEY=your_key_here
+
+# Run with Docker Compose
+make docker-up
+```
+
+## Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `make dev` | Run backend + frontend |
+| `make backend` | Run backend only |
+| `make frontend` | Run frontend only |
+| `make test` | Run backend tests |
+| `make docker-up` | Start with Docker |
+| `make clean` | Remove build artifacts |
 
 ## Project Structure
 
