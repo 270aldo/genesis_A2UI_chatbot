@@ -105,131 +105,46 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAction = (id: string, data: any) => {
+  const handleAction = async (id: string, data: any) => {
     const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
-    let userText = `Action: ${id}`;
-    if (id === 'log_food') userText = "Quiero registrar mi comida.";
-    if (id === 'log_workout') userText = "Voy a registrar mi entrenamiento.";
-    if (id === 'ADD_WATER') userText = `Registrando hidratación (+${data}ml)`;
-
-    if (id !== 'SUBMIT_CHECKIN') { 
-       setMessages(prev => [...prev, { role: 'user', text: userText, timestamp }]);
-    }
+    // 1. Optimistic UI / Visual Feedback
+    // We add a hidden message to the state so we track the interaction history
+    setMessages(prev => [...prev, { 
+      role: 'user', 
+      text: `[ACTION: ${id}]`, 
+      timestamp,
+      isHidden: true 
+    }]);
 
     setIsTyping(true);
 
-    setTimeout(() => {
-      let responseMsg: Message = {
+    try {
+      // 2. Send System Event to Backend
+      // Format: SYSTEM_EVENT: ACTION_TRIGGERED id=X payload={...}
+      const systemEventText = `SYSTEM_EVENT: ACTION_TRIGGERED id=${id} payload=${JSON.stringify(data || {})}`;
+      const result = await generateContent(systemEventText);
+
+      // 3. Render Real Response
+      const aiMsg: Message = {
         role: 'assistant',
-        agent: 'NEXUS',
-        text: "Procesando solicitud...",
+        text: result.text || "Acción procesada.",
+        agent: result.agent || "NEXUS",
+        payload: result.payload,
         timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
       };
 
-      switch (id) {
-        case 'log_food':
-          responseMsg = {
-            role: 'assistant',
-            agent: 'MACRO',
-            text: "Entendido. Sube una foto de tu plato para analizar los macros automáticamente, o describe los ingredientes aquí.",
-            timestamp: timestamp
-          };
-          break;
-
-        case 'log_workout':
-          responseMsg = {
-            role: 'assistant',
-            agent: 'BLAZE',
-            text: "¡Hora de trabajar! ¿Qué entrenamiento completaste hoy? Puedes pegar tu rutina, decirme el grupo muscular, o simplemente decir 'Generar Rutina de Hoy' si necesitas una.",
-            timestamp: timestamp
-          };
-          break;
-
-        case 'daily_checkin':
-          responseMsg = {
-            role: 'assistant',
-            agent: 'NEXUS',
-            text: "Iniciando protocolo matutino. Registremos tus métricas basales.",
-            timestamp: timestamp,
-            payload: {
-              type: 'daily-checkin',
-              props: {
-                date: new Date().toLocaleDateString(),
-                questions: [
-                  { id: 'weight', label: 'Peso Corporal (kg)', type: 'number' },
-                  { id: 'sleep', label: 'Horas de Sueño', type: 'number' },
-                  { id: 'energy', label: 'Nivel de Energía', type: 'slider', min: 1, max: 10 },
-                  { id: 'soreness', label: 'Nivel de Agujetas (1-10)', type: 'slider', min: 1, max: 10 }
-                ]
-              }
-            }
-          };
-          break;
-
-        case 'SUBMIT_CHECKIN': {
-           setMessages(prev => [...prev, { role: 'user', text: "Check-in enviado ✅", timestamp }]);
-           const sleepVal = data?.answers?.sleep || 0;
-           
-           responseMsg = {
-             role: 'assistant',
-             agent: 'NEXUS',
-             text: "Datos guardados correctamente. Tus niveles de energía son óptimos para un entrenamiento de hipertrofia hoy.",
-             timestamp: timestamp,
-             payload: {
-               type: 'progress-dashboard',
-               props: {
-                 title: 'Estado Diario',
-                 subtitle: 'Recuperación y Disponibilidad',
-                 progress: 85,
-                 metrics: [
-                   { label: 'Sleep', value: `${sleepVal}h` },
-                   { label: 'Readiness', value: 'High' }
-                 ]
-               }
-             }
-           };
-           break;
-        }
-
-        case 'ADD_WATER':
-          responseMsg = {
-            role: 'assistant',
-            agent: 'AQUA',
-            text: `Agregados ${data}ml a tu registro. Mantente hidratado para optimizar la síntesis proteica.`,
-            timestamp: timestamp,
-            payload: {
-               type: 'hydration-tracker',
-               props: { current: 1250 + (data || 0), goal: 3000 } 
-            }
-          };
-          break;
-
-        case 'START_WORKOUT':
-           responseMsg = {
-             role: 'assistant',
-             agent: 'BLAZE',
-             text: "Temporizador iniciado. ¡Dalo todo en cada set!",
-             timestamp: timestamp,
-             payload: {
-               type: 'timer-widget',
-               props: { label: 'Descanso entre sets', seconds: 90, autoStart: true }
-             }
-           };
-           break;
-
-        default:
-          responseMsg = {
-            role: 'assistant',
-            agent: 'NEXUS',
-            text: `Acción ${id} registrada en el sistema.`,
-            timestamp: timestamp
-          };
-      }
-
-      setMessages(prev => [...prev, responseMsg]);
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: "Error al procesar la acción.",
+        agent: "NEXUS",
+        timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   const toggleRecording = () => {
@@ -310,7 +225,7 @@ const App: React.FC = () => {
         {/* CHAT AREA */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
           <div className="h-4"></div>
-          {messages.map((msg, i) => (
+          {messages.filter(msg => !msg.isHidden).map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in`}>
               
               {/* Avatar Assistant */}

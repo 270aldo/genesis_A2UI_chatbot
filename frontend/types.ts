@@ -18,6 +18,7 @@ export interface Message {
   payload?: WidgetPayload;
   attachments?: Attachment[];
   timestamp: string;
+  isHidden?: boolean;
 }
 
 export interface GeminiResponse {
