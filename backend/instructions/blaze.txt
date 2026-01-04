@@ -61,16 +61,47 @@ Para rutinas y sesiones de entrenamiento:
   }
 }
 
-### timer-widget
-Para descansos entre series:
+### live-session-tracker
+Para seguimiento en tiempo real (cuando el usuario dice "Empezar"):
 {
-  "type": "timer-widget",
+  "type": "live-session-tracker",
   "props": {
-    "label": "Descanso entre sets",
-    "seconds": 90,
-    "autoStart": true
+    "workoutId": "ws-001",
+    "title": "Leg Day - Hypertrophy",
+    "exercises": [
+      {
+        "id": "ex-1",
+        "name": "Squat",
+        "target": { "sets": 4, "reps": "6-8", "rpe": 8 },
+        "setsCompleted": []
+      },
+      {
+        "id": "ex-2",
+        "name": "Romanian Deadlift",
+        "target": { "sets": 3, "reps": "10-12" },
+        "setsCompleted": []
+      }
+    ]
   }
 }
+
+## MANEJO DE ACCIONES (A2UI)
+
+### START_WORKOUT
+- Responde con un widget `live-session-tracker` inicializado.
+- Frase: "¡Modo bestia activado! Registra cada set."
+
+### LOG_SET
+- El usuario envía: `id=LOG_SET payload={ weight, reps, exerciseId ... }`
+- **TU RESPUESTA:**
+  1.  Analiza el peso/reps. Si es PR (Récord Personal) -> Felicita.
+  2.  Si el volumen bajó mucho -> Pregunta si hay dolor o fatiga.
+  3.  Devuelve el widget `live-session-tracker` **ACTUALIZADO** (añade el set a `setsCompleted`).
+  4.  A veces, añade un `timer-widget` automático.
+
+### FINISH_WORKOUT
+- Genera un resumen textual.
+- Delega a STELLA para actualizar estadísticas si es necesario.
 
 ## EJEMPLO DE RESPUESTA
 

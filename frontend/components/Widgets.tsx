@@ -87,6 +87,17 @@ interface QuickActionsProps {
   actions: { id: string; label: string; icon: string }[];
 }
 
+interface LiveSessionProps {
+  workoutId: string;
+  title: string;
+  exercises: {
+    id: string;
+    name: string;
+    target: { sets: number; reps: string; rpe?: number };
+    setsCompleted: { weight: number; reps: number }[];
+  }[];
+}
+
 // --- Widget Components ---
 
 export const ProgressDashboard: React.FC<{ data: DashboardProps }> = ({ data }) => (
@@ -445,6 +456,100 @@ export const QuickActions: React.FC<{ data: QuickActionsProps; onAction: (id: st
   );
 };
 
+// 13. Live Session Tracker
+export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+  const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
+  const [currentSetIdx, setCurrentSetIdx] = useState(0);
+  const [weight, setWeight] = useState<number>(0);
+  const [reps, setReps] = useState<number>(0);
+
+  const currentExercise = data.exercises[currentExerciseIdx];
+  const progress = ((currentExerciseIdx) / data.exercises.length) * 100;
+
+  // Initialize inputs with previous set data or empty
+  useEffect(() => {
+    if (currentExercise.setsCompleted.length > currentSetIdx) {
+      const prevSet = currentExercise.setsCompleted[currentSetIdx];
+      setWeight(prevSet.weight);
+      setReps(prevSet.reps);
+    } else {
+      setWeight(0);
+      setReps(0);
+    }
+  }, [currentExerciseIdx, currentSetIdx, currentExercise]);
+
+  const handleLogSet = () => {
+    onAction('LOG_SET', {
+      workoutId: data.workoutId,
+      exerciseId: currentExercise.id,
+      setIndex: currentSetIdx,
+      weight,
+      reps
+    });
+
+    if (currentSetIdx < currentExercise.target.sets - 1) {
+      setCurrentSetIdx(s => s + 1);
+    } else {
+      // Exercise finished
+      if (currentExerciseIdx < data.exercises.length - 1) {
+        onAction('FINISH_EXERCISE', { exerciseId: currentExercise.id });
+        setCurrentExerciseIdx(e => e + 1);
+        setCurrentSetIdx(0);
+      } else {
+        onAction('FINISH_WORKOUT', { workoutId: data.workoutId });
+      }
+    }
+  };
+
+  return (
+    <GlassCard borderColor={COLORS.blaze}>
+      <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
+      
+      {/* Header Progress */}
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="font-bold text-white text-sm">{data.title}</h3>
+        <span className="text-[10px] text-white/50">{currentExerciseIdx + 1}/{data.exercises.length}</span>
+      </div>
+      <div className="h-1 bg-white/10 rounded-full mb-4">
+        <div className="h-full bg-[#FF4500] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+      </div>
+
+      {/* Current Exercise */}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-white mb-1">{currentExercise.name}</h2>
+        <div className="flex gap-2 text-xs text-white/50">
+          <span>Target: {currentExercise.target.sets} sets × {currentExercise.target.reps}</span>
+          {currentExercise.target.rpe && <span>@ RPE {currentExercise.target.rpe}</span>}
+        </div>
+      </div>
+
+      {/* Set Input */}
+      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-xs font-bold text-[#FF4500] uppercase tracking-wider">Set {currentSetIdx + 1}</span>
+          <span className="text-[10px] text-white/40">Previous: --</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] text-white/40 block mb-1 uppercase">Peso (kg)</label>
+            <GlassInput type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+          </div>
+          <div>
+            <label className="text-[10px] text-white/40 block mb-1 uppercase">Reps</label>
+            <GlassInput type="number" value={reps} onChange={(e) => setReps(Number(e.target.value))} />
+          </div>
+        </div>
+      </div>
+
+      <ActionButton color={COLORS.blaze} onClick={handleLogSet}>
+        {currentSetIdx < currentExercise.target.sets - 1 ? 'Registrar Set' : 
+         currentExerciseIdx < data.exercises.length - 1 ? 'Terminar Ejercicio' : 'Terminar Entrenamiento'}
+      </ActionButton>
+    </GlassCard>
+  );
+};
+
 export const AlertBanner: React.FC<{ data: AlertProps }> = ({ data }) => (
   <div className={`p-3 rounded-xl border flex items-center gap-3 mb-2 ${
     data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20' 
@@ -495,6 +600,8 @@ export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction })
       return <DailyCheckIn data={payload.props} onAction={onAction} />;
     case 'quick-actions':
       return <QuickActions data={payload.props} onAction={onAction} />;
+    case 'live-session-tracker':
+      return <LiveSessionTracker data={payload.props} onAction={onAction} />;
     case 'alert-banner':
       return <AlertBanner data={payload.props} />;
     default:

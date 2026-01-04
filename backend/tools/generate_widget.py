@@ -18,6 +18,9 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
       exercises[]: { name, sets, reps, load }
     - timer-widget: Temporizador de descanso
       props: { label, seconds, autoStart? }
+    - live-session-tracker: Seguimiento en vivo de la sesión
+      props: { workoutId, title, exercises[] }
+      exercises[]: { id, name, target: { sets, reps, rpe? }, setsCompleted: [{ weight, reps }] }
     
     ### SAGE (Nutrición):
     - meal-plan: Plan de comidas del día
