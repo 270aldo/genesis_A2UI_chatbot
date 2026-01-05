@@ -185,14 +185,28 @@ def parse_agent_response(events: list) -> AgentResponse:
     text = "\n".join(text_parts) if text_parts else ""
 
     # Try to parse JSON response from agent
-    # Handle markdown code blocks: ```json ... ```
+    # Handle multiple scenarios: pure JSON, markdown code blocks, or mixed text + JSON
     json_text = text.strip()
-    if json_text.startswith("```"):
-        # Remove markdown code block markers
-        lines = json_text.split("\n")
-        json_text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
 
-    if json_text.strip().startswith("{"):
+    # Scenario 1: Markdown code block ```json ... ```
+    if "```json" in json_text or "```\n{" in json_text:
+        import re
+        # Extract JSON from code block
+        match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', json_text)
+        if match:
+            try:
+                parsed = json.loads(match.group(1))
+                # Extract text before the code block as prefix
+                prefix = json_text[:json_text.find("```")].strip()
+                parsed_text = parsed.get("text", "")
+                text = f"{prefix}\n\n{parsed_text}".strip() if prefix else parsed_text
+                agent = parsed.get("agent", agent).upper()
+                if "payload" in parsed:
+                    payload = parsed.get("payload")
+            except json.JSONDecodeError:
+                pass
+    # Scenario 2: Pure JSON starting with {
+    elif json_text.startswith("{"):
         try:
             parsed = json.loads(json_text)
             text = parsed.get("text", text)
@@ -201,6 +215,43 @@ def parse_agent_response(events: list) -> AgentResponse:
                 payload = parsed.get("payload")
         except json.JSONDecodeError:
             pass
+    # Scenario 3: Text followed by JSON (find last JSON object)
+    elif "{" in json_text and "}" in json_text:
+        # Find the last complete JSON object in the text
+        import re
+        # Look for JSON that has "text" and "agent" keys (our expected format)
+        matches = list(re.finditer(r'\{[^{}]*"(?:text|agent)"[^{}]*\{?[^{}]*\}?[^{}]*\}', json_text))
+        if matches:
+            try:
+                # Try to parse the last JSON-like structure
+                last_match = matches[-1].group()
+                # Find the actual JSON boundaries
+                start = json_text.rfind('{"')
+                if start == -1:
+                    start = json_text.rfind('{\n')
+                if start != -1:
+                    # Try to find matching closing brace
+                    depth = 0
+                    end = start
+                    for i, char in enumerate(json_text[start:]):
+                        if char == '{':
+                            depth += 1
+                        elif char == '}':
+                            depth -= 1
+                            if depth == 0:
+                                end = start + i + 1
+                                break
+
+                    json_str = json_text[start:end]
+                    parsed = json.loads(json_str)
+                    prefix = json_text[:start].strip()
+                    parsed_text = parsed.get("text", "")
+                    text = f"{prefix}\n\n{parsed_text}".strip() if prefix else parsed_text
+                    agent = parsed.get("agent", agent).upper()
+                    if "payload" in parsed:
+                        payload = parsed.get("payload")
+            except (json.JSONDecodeError, ValueError):
+                pass
 
     return AgentResponse(
         text=text or "Respuesta procesada",

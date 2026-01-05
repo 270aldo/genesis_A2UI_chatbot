@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Cpu, Zap, UtensilsCrossed, Droplets, AlertTriangle, 
+import {
+  Cpu, Zap, UtensilsCrossed, Droplets, AlertTriangle,
   Clock, Moon, CheckCircle2, Play, Pause, RotateCcw,
-  Pill, Quote, ListChecks, Flame, ClipboardList, Activity
+  Pill, Quote, ListChecks, Flame, ClipboardList, Activity,
+  TrendingUp, TrendingDown, Lightbulb, Brain
 } from 'lucide-react';
 import { GlassCard, AgentBadge, ProgressBar, ActionButton, GlassInput, GlassSlider } from './BaseUI';
 import { COLORS } from '../constants';
@@ -66,6 +67,13 @@ interface TimerProps {
 interface QuoteProps {
   quote: string;
   author: string;
+}
+
+interface InsightProps {
+  title: string;
+  insight: string;
+  trend?: 'positive' | 'negative' | 'neutral';
+  recommendation?: string;
 }
 
 interface ChecklistProps {
@@ -314,6 +322,48 @@ export const QuoteCard: React.FC<{ data: QuoteProps }> = ({ data }) => (
     </div>
   </GlassCard>
 );
+
+// Insight Card - STELLA's analysis and recommendations
+export const InsightCard: React.FC<{ data: InsightProps }> = ({ data }) => {
+  const trendConfig = {
+    positive: { icon: TrendingUp, color: '#00FF88', label: 'Positivo' },
+    negative: { icon: TrendingDown, color: '#FF4444', label: 'Atención' },
+    neutral: { icon: Activity, color: '#6366F1', label: 'Neutral' },
+  };
+
+  const trend = data.trend || 'neutral';
+  const TrendIcon = trendConfig[trend].icon;
+  const trendColor = trendConfig[trend].color;
+
+  return (
+    <GlassCard borderColor={COLORS.stella}>
+      <AgentBadge name="STELLA" color={COLORS.stella} icon={Brain} />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-white text-sm">{data.title}</h3>
+          <div
+            className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+            style={{ backgroundColor: `${trendColor}20`, color: trendColor }}
+          >
+            <TrendIcon size={12} />
+            <span>{trendConfig[trend].label}</span>
+          </div>
+        </div>
+
+        <p className="text-white/80 text-sm leading-relaxed">{data.insight}</p>
+
+        {data.recommendation && (
+          <div className="mt-3 p-3 bg-white/5 rounded-xl border border-white/10">
+            <div className="flex items-start gap-2">
+              <Lightbulb size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-white/70 text-xs leading-relaxed">{data.recommendation}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </GlassCard>
+  );
+};
 
 export const SupplementStack: React.FC<{ data: SupplementProps }> = ({ data }) => (
   <GlassCard borderColor={COLORS.macro}>
@@ -690,6 +740,8 @@ export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction })
       return <TimerWidget data={payload.props} />;
     case 'quote-card':
       return <QuoteCard data={payload.props} />;
+    case 'insight-card':
+      return <InsightCard data={payload.props} />;
     case 'checklist':
       return <ChecklistWidget data={payload.props} />;
     case 'supplement-stack':
