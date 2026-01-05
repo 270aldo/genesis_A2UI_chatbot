@@ -457,54 +457,105 @@ export const QuickActions: React.FC<{ data: QuickActionsProps; onAction: (id: st
 };
 
 // 13. Live Session Tracker
+interface SetRecord {
+  weight: number;
+  reps: number;
+}
+
+interface ExerciseProgress {
+  exerciseId: string;
+  sets: SetRecord[];
+}
+
 export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
   const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
   const [currentSetIdx, setCurrentSetIdx] = useState(0);
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
+  const [isFinished, setIsFinished] = useState(false);
+
+  // Track all completed sets locally
+  const [workoutLog, setWorkoutLog] = useState<ExerciseProgress[]>(
+    data.exercises.map(ex => ({ exerciseId: ex.id, sets: [] }))
+  );
 
   const currentExercise = data.exercises[currentExerciseIdx];
-  const progress = ((currentExerciseIdx) / data.exercises.length) * 100;
+  const currentExerciseLog = workoutLog[currentExerciseIdx];
 
-  // Initialize inputs with previous set data or empty
-  useEffect(() => {
-    if (currentExercise.setsCompleted.length > currentSetIdx) {
-      const prevSet = currentExercise.setsCompleted[currentSetIdx];
-      setWeight(String(prevSet.weight));
-      setReps(String(prevSet.reps));
-    } else {
-      setWeight('');
-      setReps('');
-    }
-  }, [currentExerciseIdx, currentSetIdx, currentExercise]);
+  // Calculate total progress
+  const totalSets = data.exercises.reduce((sum, ex) => sum + ex.target.sets, 0);
+  const completedSets = workoutLog.reduce((sum, ex) => sum + ex.sets.length, 0);
+  const progress = (completedSets / totalSets) * 100;
+
+  // Get previous set for reference
+  const previousSet = currentExerciseLog.sets[currentSetIdx - 1];
 
   const handleLogSet = () => {
-    onAction('LOG_SET', {
-      workoutId: data.workoutId,
-      exerciseId: currentExercise.id,
-      setIndex: currentSetIdx,
+    const newSet: SetRecord = {
       weight: parseFloat(weight) || 0,
       reps: parseInt(reps) || 0
+    };
+
+    // Update local workout log
+    setWorkoutLog(prev => {
+      const updated = [...prev];
+      updated[currentExerciseIdx] = {
+        ...updated[currentExerciseIdx],
+        sets: [...updated[currentExerciseIdx].sets, newSet]
+      };
+      return updated;
     });
 
+    // Advance to next set or exercise
     if (currentSetIdx < currentExercise.target.sets - 1) {
       setCurrentSetIdx(s => s + 1);
+      setWeight('');
+      setReps('');
     } else {
       // Exercise finished
       if (currentExerciseIdx < data.exercises.length - 1) {
-        onAction('FINISH_EXERCISE', { exerciseId: currentExercise.id });
         setCurrentExerciseIdx(e => e + 1);
         setCurrentSetIdx(0);
+        setWeight('');
+        setReps('');
       } else {
-        onAction('FINISH_WORKOUT', { workoutId: data.workoutId });
+        // Workout finished - send summary to backend
+        setIsFinished(true);
+        const summary = {
+          workoutId: data.workoutId,
+          title: data.title,
+          exercises: data.exercises.map((ex, idx) => ({
+            name: ex.name,
+            target: ex.target,
+            completed: [...workoutLog[idx].sets, ...(idx === currentExerciseIdx ? [newSet] : [])]
+          })),
+          totalVolume: workoutLog.reduce((sum, ex, idx) => {
+            const sets = idx === currentExerciseIdx ? [...ex.sets, newSet] : ex.sets;
+            return sum + sets.reduce((s, set) => s + (set.weight * set.reps), 0);
+          }, 0)
+        };
+        onAction('FINISH_WORKOUT', summary);
       }
     }
   };
 
+  if (isFinished) {
+    return (
+      <GlassCard borderColor={COLORS.blaze}>
+        <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
+        <div className="text-center py-6">
+          <div className="text-4xl mb-2">🔥</div>
+          <h2 className="text-xl font-bold text-white mb-2">¡Entrenamiento Completado!</h2>
+          <p className="text-white/60 text-sm">BLAZE está preparando tu resumen...</p>
+        </div>
+      </GlassCard>
+    );
+  }
+
   return (
     <GlassCard borderColor={COLORS.blaze}>
       <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
-      
+
       {/* Header Progress */}
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-bold text-white text-sm">{data.title}</h3>
@@ -515,7 +566,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
       </div>
 
       {/* Current Exercise */}
-      <div className="mb-6">
+      <div className="mb-4">
         <h2 className="text-xl font-bold text-white mb-1">{currentExercise.name}</h2>
         <div className="flex gap-2 text-xs text-white/50">
           <span>Target: {currentExercise.target.sets} sets × {currentExercise.target.reps}</span>
@@ -523,13 +574,45 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
         </div>
       </div>
 
+      {/* Sets Progress Indicators */}
+      <div className="flex gap-2 mb-4">
+        {Array.from({ length: currentExercise.target.sets }).map((_, idx) => (
+          <div
+            key={idx}
+            className={`flex-1 h-2 rounded-full transition-all ${
+              idx < currentExerciseLog.sets.length
+                ? 'bg-[#FF4500]'
+                : idx === currentSetIdx
+                ? 'bg-[#FF4500]/50 animate-pulse'
+                : 'bg-white/10'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Completed Sets Summary */}
+      {currentExerciseLog.sets.length > 0 && (
+        <div className="mb-4 space-y-1">
+          {currentExerciseLog.sets.map((set, idx) => (
+            <div key={idx} className="flex justify-between text-xs text-white/50 bg-white/5 rounded-lg px-3 py-1">
+              <span>Set {idx + 1}</span>
+              <span>{set.weight}kg × {set.reps} reps</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Set Input */}
       <div className="bg-white/5 border border-white/5 rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-xs font-bold text-[#FF4500] uppercase tracking-wider">Set {currentSetIdx + 1}</span>
-          <span className="text-[10px] text-white/40">Previous: --</span>
+          <span className="text-xs font-bold text-[#FF4500] uppercase tracking-wider">
+            Set {currentSetIdx + 1} / {currentExercise.target.sets}
+          </span>
+          <span className="text-[10px] text-white/40">
+            {previousSet ? `Previous: ${previousSet.weight}kg × ${previousSet.reps}` : 'Previous: --'}
+          </span>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-[10px] text-white/40 block mb-1 uppercase">Peso (kg)</label>
@@ -555,8 +638,11 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
       </div>
 
       <ActionButton color={COLORS.blaze} onClick={handleLogSet}>
-        {currentSetIdx < currentExercise.target.sets - 1 ? 'Registrar Set' : 
-         currentExerciseIdx < data.exercises.length - 1 ? 'Terminar Ejercicio' : 'Terminar Entrenamiento'}
+        {currentSetIdx < currentExercise.target.sets - 1
+          ? `Registrar Set ${currentSetIdx + 1}`
+          : currentExerciseIdx < data.exercises.length - 1
+            ? 'Siguiente Ejercicio →'
+            : '🔥 Terminar Entrenamiento'}
       </ActionButton>
     </GlassCard>
   );
