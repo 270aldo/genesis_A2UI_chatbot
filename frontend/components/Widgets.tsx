@@ -460,8 +460,8 @@ export const QuickActions: React.FC<{ data: QuickActionsProps; onAction: (id: st
 export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
   const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
   const [currentSetIdx, setCurrentSetIdx] = useState(0);
-  const [weight, setWeight] = useState<number>(0);
-  const [reps, setReps] = useState<number>(0);
+  const [weight, setWeight] = useState<string>('');
+  const [reps, setReps] = useState<string>('');
 
   const currentExercise = data.exercises[currentExerciseIdx];
   const progress = ((currentExerciseIdx) / data.exercises.length) * 100;
@@ -470,11 +470,11 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
   useEffect(() => {
     if (currentExercise.setsCompleted.length > currentSetIdx) {
       const prevSet = currentExercise.setsCompleted[currentSetIdx];
-      setWeight(prevSet.weight);
-      setReps(prevSet.reps);
+      setWeight(String(prevSet.weight));
+      setReps(String(prevSet.reps));
     } else {
-      setWeight(0);
-      setReps(0);
+      setWeight('');
+      setReps('');
     }
   }, [currentExerciseIdx, currentSetIdx, currentExercise]);
 
@@ -483,8 +483,8 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
       workoutId: data.workoutId,
       exerciseId: currentExercise.id,
       setIndex: currentSetIdx,
-      weight,
-      reps
+      weight: parseFloat(weight) || 0,
+      reps: parseInt(reps) || 0
     });
 
     if (currentSetIdx < currentExercise.target.sets - 1) {
@@ -533,11 +533,23 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-[10px] text-white/40 block mb-1 uppercase">Peso (kg)</label>
-            <GlassInput type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+            <GlassInput
+              type="text"
+              inputMode="decimal"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              placeholder="0"
+            />
           </div>
           <div>
             <label className="text-[10px] text-white/40 block mb-1 uppercase">Reps</label>
-            <GlassInput type="number" value={reps} onChange={(e) => setReps(Number(e.target.value))} />
+            <GlassInput
+              type="text"
+              inputMode="numeric"
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+              placeholder="0"
+            />
           </div>
         </div>
       </div>
