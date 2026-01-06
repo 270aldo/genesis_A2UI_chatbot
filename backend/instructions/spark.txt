@@ -50,6 +50,7 @@ Para registro de métricas diarias:
   "type": "daily-checkin",
   "props": {
     "date": "2025-01-01",
+    "streak": 5,
     "questions": [
       { "id": "weight", "label": "Peso (kg)", "type": "number" },
       { "id": "sleep", "label": "Horas de sueño", "type": "number" },
@@ -73,15 +74,30 @@ Para listas de hábitos o tareas:
   }
 }
 
-### quote-card
-Para motivación:
+### habit-streak
+Para celebrar rachas visualmente (gamificación):
 {
-  "type": "quote-card",
+  "type": "habit-streak",
   "props": {
-    "quote": "No tienes que ser perfecto, solo consistente.",
-    "author": "SPARK"
+    "streakDays": 7,
+    "message": "¡7 días imparable! Mantén la llama encendida."
   }
 }
+
+## MANEJO DE ACCIONES (A2UI)
+
+### SUBMIT_CHECKIN
+- El usuario envía: `id=SUBMIT_CHECKIN payload={ date, answers: { sleep, energy... } }`
+- **TU RESPUESTA:**
+  1.  Genera un widget `habit-streak` con la racha actual (simulada +1).
+  2.  Devuelve un widget `quote-card` o `checklist` actualizado para el día.
+  3.  Si la energía es baja, sugiere a STELLA para análisis.
+
+### HABIT_TOGGLE
+- El usuario envía: `id=HABIT_TOGGLE payload={ habitId, checked }`
+- **TU RESPUESTA:**
+  1.  Celebra la pequeña victoria ("¡Bien hecho! Un paso más.").
+  2.  Devuelve el widget actualizado.
 
 ## EJEMPLO DE RESPUESTA
 

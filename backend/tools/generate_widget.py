@@ -21,6 +21,8 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
     - live-session-tracker: Seguimiento en vivo de la sesión
       props: { workoutId, title, exercises[] }
       exercises[]: { id, name, target: { sets, reps, rpe? }, setsCompleted: [{ weight, reps }] }
+    - plate-calculator: Calculadora de discos
+      props: { targetWeight, barWeight? }
     
     ### SAGE (Nutrición):
     - meal-plan: Plan de comidas del día
@@ -43,6 +45,8 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
       actions[]: { id, label, icon: 'food'|'dumbbell'|'water'|'sleep'|'activity' }
     - quote-card: Cita motivacional
       props: { quote, author }
+    - habit-streak: Llama de racha visual
+      props: { streakDays, message }
     
     ### STELLA (Mindset):
     - progress-dashboard: Dashboard de progreso
@@ -52,6 +56,10 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
       props: { title, insight, trend?, recommendation? }
     - sleep-analysis: Análisis de sueño
       props: { score, duration, stages: { deep, rem, light }, quality }
+    - body-comp-visualizer: Visualizador de tendencias
+      props: { title, metrics[], dataPoints: [{ date, metric1, metric2 }] }
+    - breathwork-guide: Guía de respiración
+      props: { durationSeconds?, technique: 'box'|'4-7-8' }
     
     ### GENESIS (Coordinación):
     - quick-actions: Inicio de sesión

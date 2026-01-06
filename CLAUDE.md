@@ -135,13 +135,13 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
 
 ## Agent Routing
 
-| Query Keywords (Spanish) | Agent | Widget |
-|--------------------------|-------|--------|
-| entrenamiento, fuerza, rutina | BLAZE | workout-card |
-| nutrición, comida, dieta | SAGE | meal-plan |
-| hábitos, consistencia | SPARK | checklist |
-| progreso, análisis, mindset | STELLA | progress-dashboard |
-| por qué, explícame | LOGOS | None |
+| Query Keywords (Spanish) | Agent | Primary Widgets |
+|--------------------------|-------|-----------------|
+| entrenamiento, fuerza, rutina, ejercicio | BLAZE | workout-card, live-session-tracker |
+| nutrición, comida, dieta, macros, calorías | SAGE | meal-plan, recipe-card, smart-grocery-list |
+| hábitos, consistencia, sueño, motivación | SPARK | checklist, daily-checkin, habit-streak |
+| progreso, análisis, datos, mindset | STELLA | insight-card, progress-dashboard |
+| por qué, explícame, concepto | LOGOS | None (TEXT_ONLY) |
 | hola, inicio | GENESIS | quick-actions |
 
 ## Adding New Agents
@@ -169,6 +169,7 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
 - **Response may have markdown wrapper**: Parse ` ```json ``` ` blocks
 - **google-adk >= 1.1.0 required**: Not 1.21.0 (conflicts with FastAPI/starlette)
 - **Frontend uses api.ts**: Not geminiService.ts (which was direct Gemini)
+- **CRITICAL - ADK Template Variables**: In instruction `.txt` files, avoid `{ variable }` syntax as ADK interprets curly braces as context variables. Use `(variable)` instead to document payload structures
 
 ## Environment Variables
 

@@ -85,6 +85,16 @@ Para seguimiento en tiempo real (cuando el usuario dice "Empezar"):
   }
 }
 
+### plate-calculator
+Para ayudar a cargar la barra:
+{
+  "type": "plate-calculator",
+  "props": {
+    "targetWeight": 102.5,
+    "barWeight": 20
+  }
+}
+
 ## MANEJO DE ACCIONES (A2UI)
 
 ### START_WORKOUT

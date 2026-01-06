@@ -106,6 +106,35 @@ interface LiveSessionProps {
   }[];
 }
 
+interface SmartGroceryListProps {
+  title: string;
+  categories: {
+    name: string;
+    items: { id: string; name: string; amount: string; checked: boolean }[];
+  }[];
+}
+
+interface BodyCompVisualizerProps {
+  title: string;
+  metrics: string[]; // e.g., ["sleep", "energy"]
+  dataPoints: { date: string; [key: string]: number | string }[];
+}
+
+interface PlateCalculatorProps {
+  targetWeight: number;
+  barWeight?: number; // default 20
+}
+
+interface HabitStreakProps {
+  streakDays: number;
+  message: string;
+}
+
+interface BreathworkProps {
+  durationSeconds?: number;
+  technique?: 'box' | '4-7-8' | 'calm';
+}
+
 // --- Widget Components ---
 
 export const ProgressDashboard: React.FC<{ data: DashboardProps }> = ({ data }) => (
@@ -698,6 +727,280 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
   );
 };
 
+// 14. Smart Grocery List
+export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+  const [categories, setCategories] = useState(data.categories);
+
+  const toggleItem = (catIdx: number, itemIdx: number) => {
+    const newCats = [...categories];
+    newCats[catIdx].items[itemIdx].checked = !newCats[catIdx].items[itemIdx].checked;
+    setCategories(newCats);
+  };
+
+  const handleFinish = () => {
+    const checkedItems = categories.flatMap(c => c.items).filter(i => i.checked).map(i => i.id);
+    onAction('GROCERY_CHECK', { itemsChecked: checkedItems });
+  };
+
+  return (
+    <GlassCard borderColor={COLORS.macro}>
+      <AgentBadge name="SAGE" color={COLORS.macro} icon={UtensilsCrossed} />
+      <h3 className="font-bold text-white mb-4">{data.title}</h3>
+      
+      <div className="space-y-6 mb-6">
+        {categories.map((cat, cIdx) => (
+          <div key={cIdx}>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">{cat.name}</p>
+            <div className="space-y-2">
+              {cat.items.map((item, iIdx) => (
+                <div 
+                  key={item.id}
+                  onClick={() => toggleItem(cIdx, iIdx)}
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                    item.checked ? 'bg-[#00FF88]/10 border-[#00FF88]/20 opacity-60' : 'bg-white/5 border-transparent hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      item.checked ? 'bg-[#00FF88] border-[#00FF88]' : 'border-white/30'
+                    }`}>
+                      {item.checked && <CheckCircle2 size={12} className="text-black" />}
+                    </div>
+                    <span className={`text-xs ${item.checked ? 'line-through text-white/50' : 'text-white'}`}>{item.name}</span>
+                  </div>
+                  <span className="text-[10px] text-white/30 font-mono">{item.amount}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ActionButton color={COLORS.macro} onClick={handleFinish}>
+        Finalizar Compra
+      </ActionButton>
+    </GlassCard>
+  );
+};
+
+// 15. Body Composition & Trends Visualizer
+export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+  // Simple SVG chart logic
+  const height = 150;
+  const width = 300;
+  const padding = 20;
+  const points = data.dataPoints;
+  const metricA = data.metrics[0];
+  const metricB = data.metrics[1];
+
+  const getPoints = (metric: string) => {
+    const max = Math.max(...points.map(p => Number(p[metric]) || 0)) || 10;
+    return points.map((p, i) => {
+      const x = (i / (points.length - 1)) * (width - padding * 2) + padding;
+      const y = height - ((Number(p[metric]) || 0) / max) * (height - padding * 2) - padding;
+      return `${x},${y}`;
+    }).join(' ');
+  };
+
+  const handleClick = (pointIndex: number) => {
+    onAction('ANALYZE_TREND', { 
+      date: points[pointIndex].date,
+      metrics: {
+        [metricA]: points[pointIndex][metricA],
+        [metricB]: points[pointIndex][metricB]
+      }
+    });
+  };
+
+  return (
+    <GlassCard borderColor={COLORS.stella}>
+      <AgentBadge name="STELLA" color={COLORS.stella} icon={Activity} />
+      <h3 className="font-bold text-white mb-1">{data.title}</h3>
+      <div className="flex gap-4 text-[10px] uppercase tracking-wider mb-4">
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-[#A855F7]"></span>
+          <span className="text-white/60">{metricA}</span>
+        </div>
+        {metricB && (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-[#00D4FF]"></span>
+            <span className="text-white/60">{metricB}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="relative w-full h-[150px] bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          {/* Grid lines */}
+          <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+
+          {/* Metric A Line (Purple) */}
+          <polyline 
+            points={getPoints(metricA)} 
+            fill="none" 
+            stroke="#A855F7" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+          />
+          
+          {/* Metric B Line (Blue) */}
+          {metricB && (
+            <polyline 
+              points={getPoints(metricB)} 
+              fill="none" 
+              stroke="#00D4FF" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeDasharray="4 4"
+            />
+          )}
+
+          {/* Interactive Dots */}
+          {points.map((p, i) => {
+             const x = (i / (points.length - 1)) * (width - padding * 2) + padding;
+             return (
+               <g key={i} onClick={() => handleClick(i)} className="cursor-pointer group">
+                 <circle cx={x} cy={height-padding + 10} r="10" fill="transparent" />
+                 <text x={x} y={height - 5} fontSize="8" fill="white" textAnchor="middle" opacity="0.5">{p.date}</text>
+                 <line x1={x} y1={padding} x2={x} y2={height-padding} stroke="white" strokeWidth="1" opacity="0" className="group-hover:opacity-10 transition-opacity" />
+               </g>
+             );
+          })}
+        </svg>
+      </div>
+      <p className="text-[10px] text-white/30 text-center mt-2 italic">Toca un día para analizar correlaciones.</p>
+    </GlassCard>
+  );
+};
+
+// 16. Plate Calculator (Utility)
+export const PlateCalculator: React.FC<{ data: PlateCalculatorProps }> = ({ data }) => {
+  const [weight, setWeight] = useState(data.targetWeight);
+  const bar = data.barWeight || 20;
+  
+  const calculatePlates = (target: number) => {
+    if (target < bar) return [];
+    let remaining = (target - bar) / 2;
+    const plates: number[] = [];
+    const available = [25, 20, 15, 10, 5, 2.5, 1.25];
+    
+    for (const p of available) {
+      while (remaining >= p) {
+        plates.push(p);
+        remaining -= p;
+      }
+    }
+    return plates;
+  };
+
+  const plates = calculatePlates(weight);
+
+  return (
+    <GlassCard borderColor={COLORS.blaze}>
+      <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
+      <h3 className="font-bold text-white text-sm mb-4">Calculadora de Carga</h3>
+      
+      <div className="flex items-center gap-4 mb-6 justify-center">
+        <button onClick={() => setWeight(w => w - 2.5)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">-</button>
+        <div className="text-center">
+          <span className="text-3xl font-bold text-white">{weight}</span>
+          <span className="text-xs text-white/40 block">kg total</span>
+        </div>
+        <button onClick={() => setWeight(w => w + 2.5)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">+</button>
+      </div>
+
+      <div className="flex items-center justify-center gap-1 h-24 bg-white/5 rounded-xl mb-2 relative overflow-hidden">
+        {/* Barbell end */}
+        <div className="absolute left-0 w-full h-2 bg-gray-500 z-0"></div>
+        <div className="h-4 w-8 bg-gray-400 z-10 rounded-sm"></div> {/* Collar */}
+        
+        {plates.map((p, i) => {
+          // Visual scaling for plates
+          const height = p >= 20 ? 80 : p >= 10 ? 60 : p >= 5 ? 40 : 25;
+          const color = p >= 25 ? '#FF0000' : p >= 20 ? '#0000FF' : p >= 10 ? '#00FF00' : '#FFFFFF';
+          return (
+            <div key={i} className="w-4 z-10 rounded-sm border border-black/20 flex items-center justify-center shadow-lg" 
+              style={{ height: `${height}px`, backgroundColor: color }}>
+              {height > 30 && <span className="text-[8px] -rotate-90 font-bold text-black/50">{p}</span>}
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-center text-xs text-white/40">Por lado (Barra {bar}kg)</p>
+    </GlassCard>
+  );
+};
+
+// 17. Habit Streak Flame (Gamification)
+export const HabitStreakFlame: React.FC<{ data: HabitStreakProps }> = ({ data }) => {
+  return (
+    <GlassCard borderColor={COLORS.spark}>
+      <AgentBadge name="SPARK" color={COLORS.spark} icon={Flame} />
+      <div className="text-center py-4">
+        <div className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+          {/* Simple CSS-like flame layers */}
+          <div className="absolute bottom-0 w-16 h-16 bg-orange-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+          <Flame size={80} className="relative z-10 text-[#FFB800] drop-shadow-[0_0_15px_rgba(255,184,0,0.5)] animate-bounce" fill="currentColor" />
+          <div className="absolute -bottom-2 w-12 h-4 bg-yellow-300 rounded-full blur-md opacity-80"></div>
+        </div>
+        <h2 className="text-4xl font-bold text-white mb-1">{data.streakDays}</h2>
+        <p className="text-xs font-bold text-[#FFB800] uppercase tracking-widest mb-2">Días de Racha</p>
+        <p className="text-xs text-white/60 italic">"{data.message}"</p>
+      </div>
+    </GlassCard>
+  );
+};
+
+// 18. Breathwork Guide (Mindset Tool)
+export const BreathworkGuide: React.FC<{ data: BreathworkProps }> = ({ data }) => {
+  const [phase, setPhase] = useState<'Inhalar' | 'Sostener' | 'Exhalar'>('Inhalar');
+  const [scale, setScale] = useState(1);
+  
+  useEffect(() => {
+    // 4-4-4 Box Breathing loop
+    const cycle = async () => {
+      while(true) {
+        setPhase('Inhalar'); setScale(1.5);
+        await new Promise(r => setTimeout(r, 4000));
+        setPhase('Sostener');
+        await new Promise(r => setTimeout(r, 4000));
+        setPhase('Exhalar'); setScale(1);
+        await new Promise(r => setTimeout(r, 4000));
+        setPhase('Sostener');
+        await new Promise(r => setTimeout(r, 4000));
+      }
+    };
+    cycle();
+  }, []);
+
+  return (
+    <GlassCard borderColor={COLORS.luna}>
+      <AgentBadge name="LUNA" color={COLORS.luna} icon={Moon} />
+      <div className="h-48 flex flex-col items-center justify-center py-4 relative overflow-hidden">
+        <div 
+          className="w-24 h-24 rounded-full border-4 border-[#A855F7]/30 flex items-center justify-center transition-all duration-[4000ms] ease-in-out relative z-10"
+          style={{ transform: `scale(${scale})`, backgroundColor: `rgba(168, 85, 247, ${scale === 1.5 ? 0.2 : 0})` }}
+        >
+          <div className="w-2 h-2 bg-white rounded-full"></div>
+        </div>
+        
+        {/* Ripples */}
+        <div className="absolute w-full h-full flex items-center justify-center pointer-events-none">
+           <div className={`w-32 h-32 rounded-full border border-[#A855F7]/20 absolute transition-all duration-[4000ms] ${scale === 1.5 ? 'scale-150 opacity-0' : 'scale-50 opacity-100'}`} />
+        </div>
+
+        <div className="absolute bottom-4 text-center z-20">
+          <p className="text-xl font-bold text-white tracking-widest uppercase animate-pulse">{phase}</p>
+          <p className="text-[10px] text-white/40 mt-1">4-4-4 Box Breathing</p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+};
+
 export const AlertBanner: React.FC<{ data: AlertProps }> = ({ data }) => (
   <div className={`p-3 rounded-xl border flex items-center gap-3 mb-2 ${
     data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20' 
@@ -752,6 +1055,16 @@ export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction })
       return <QuickActions data={payload.props} onAction={onAction} />;
     case 'live-session-tracker':
       return <LiveSessionTracker data={payload.props} onAction={onAction} />;
+    case 'smart-grocery-list':
+      return <SmartGroceryList data={payload.props} onAction={onAction} />;
+    case 'body-comp-visualizer':
+      return <BodyCompVisualizer data={payload.props} onAction={onAction} />;
+    case 'plate-calculator':
+      return <PlateCalculator data={payload.props} />;
+    case 'habit-streak':
+      return <HabitStreakFlame data={payload.props} />;
+    case 'breathwork-guide':
+      return <BreathworkGuide data={payload.props} />;
     case 'alert-banner':
       return <AlertBanner data={payload.props} />;
     default:

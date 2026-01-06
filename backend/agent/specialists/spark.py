@@ -4,7 +4,7 @@ from pathlib import Path
 
 from google.adk.agents import Agent
 
-from tools import generate_widget
+from tools import generate_widget, get_user_context, update_user_context
 
 # Load instruction from file
 INSTRUCTION_PATH = Path(__file__).parent.parent.parent / "instructions" / "spark.txt"
@@ -19,5 +19,5 @@ spark = Agent(
         "Usa para: hábitos, consistencia, motivación, check-in, rutina diaria, no puedo, difícil."
     ),
     instruction=SPARK_INSTRUCTION,
-    tools=[generate_widget],
+    tools=[generate_widget, get_user_context, update_user_context],
 )

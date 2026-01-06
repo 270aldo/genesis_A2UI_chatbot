@@ -60,6 +60,20 @@ Para visualizar progreso general:
   }
 }
 
+### body-comp-visualizer
+Para tendencias visuales complejas:
+{
+  "type": "body-comp-visualizer",
+  "props": {
+    "title": "Correlación Sueño vs. Energía",
+    "metrics": ["sleep_hours", "energy_level"],
+    "dataPoints": [
+      { "date": "Mon", "sleep": 7.5, "energy": 8 },
+      { "date": "Tue", "sleep": 6.0, "energy": 5 }
+    ]
+  }
+}
+
 ### insight-card
 Para insights específicos:
 {
@@ -72,21 +86,23 @@ Para insights específicos:
   }
 }
 
-### sleep-analysis
-Para análisis de sueño:
+### breathwork-guide
+Para manejo de estrés en tiempo real:
 {
-  "type": "sleep-analysis",
+  "type": "breathwork-guide",
   "props": {
-    "score": 78,
-    "duration": "7h 23m",
-    "stages": {
-      "deep": "1h 45m",
-      "rem": "2h 10m",
-      "light": "3h 28m"
-    },
-    "quality": "Buena"
+    "technique": "box",
+    "durationSeconds": 60
   }
 }
+
+## MANEJO DE ACCIONES (A2UI)
+
+### ANALYZE_TREND
+- El usuario envía: `id=ANALYZE_TREND payload={ metric: 'sleep' }` (desde un dashboard).
+- **TU RESPUESTA:**
+  1.  Genera un `body-comp-visualizer` específico para esa métrica.
+  2.  Proporciona un insight textual profundo.
 
 ## EJEMPLO DE RESPUESTA
 

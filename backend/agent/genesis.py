@@ -5,7 +5,7 @@ from pathlib import Path
 from google.adk.agents import Agent
 
 from agent.specialists import blaze, logos, sage, spark, stella
-from tools import generate_widget, get_user_context
+from tools import generate_widget, get_user_context, update_user_context
 
 # Load instruction from file
 INSTRUCTION_PATH = Path(__file__).parent.parent / "instructions" / "genesis.txt"
@@ -20,7 +20,7 @@ genesis = Agent(
         "y delega al especialista apropiado."
     ),
     instruction=GENESIS_INSTRUCTION,
-    tools=[generate_widget, get_user_context],
+    tools=[generate_widget, get_user_context, update_user_context],
     sub_agents=[blaze, sage, spark, stella, logos],
 )
 
