@@ -1,10 +1,13 @@
 export interface Attachment {
   type: 'image';
   url: string;
+  data?: string; // base64 (no data URI header)
+  mimeType?: string;
   name?: string;
+  size?: number;
 }
 
-export type AgentType = 'NEXUS' | 'BLAZE' | 'MACRO' | 'AQUA' | 'LUNA';
+export type AgentType = 'GENESIS' | 'BLAZE' | 'SAGE' | 'SPARK' | 'STELLA' | 'LOGOS';
 
 export interface WidgetPayload {
   type: 'workout-card' | 'meal-plan' | 'hydration-tracker' | 'progress-dashboard' | 'supplement-stack' | 'alert-banner' | 'recipe-card' | 'sleep-analysis' | 'timer-widget' | 'quote-card' | 'checklist' | 'daily-checkin' | 'quick-actions' | 'live-session-tracker' | 'smart-grocery-list' | 'body-comp-visualizer' | 'plate-calculator' | 'habit-streak' | 'breathwork-guide';

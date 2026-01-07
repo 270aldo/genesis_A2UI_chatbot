@@ -1,9 +1,19 @@
 import { Attachment, GeminiResponse } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const generateContent = async (prompt: string, attachments: Attachment[] = []): Promise<GeminiResponse> => {
   try {
+    const sanitizedAttachments = attachments
+      .filter((att) => att.type === 'image' && att.data && att.mimeType)
+      .map((att) => ({
+        type: att.type,
+        data: att.data,
+        mimeType: att.mimeType,
+        name: att.name,
+        size: att.size
+      }));
+
     const response = await fetch(`${API_URL}/api/chat`, {
       method: 'POST',
       headers: {
@@ -12,6 +22,7 @@ export const generateContent = async (prompt: string, attachments: Attachment[] 
       body: JSON.stringify({
         message: prompt,
         session_id: 'default-session',
+        attachments: sanitizedAttachments
       }),
     });
 

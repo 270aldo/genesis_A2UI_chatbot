@@ -44,6 +44,23 @@ curl -X POST http://localhost:8000/api/chat \
   -d '{"message": "¿Qué entreno hoy?", "session_id": "test"}'
 ```
 
+**With image attachment:**
+```bash
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "¿Qué ves en esta imagen?",
+    "session_id": "test",
+    "attachments": [{
+      "type": "image",
+      "data": "<base64-encoded-image>",
+      "mimeType": "image/jpeg",
+      "name": "photo.jpg",
+      "size": 12345
+    }]
+  }'
+```
+
 **Response:**
 ```json
 {
@@ -55,6 +72,8 @@ curl -X POST http://localhost:8000/api/chat \
   }
 }
 ```
+
+> **Note:** Max 4 attachments per request, max 5MB per image.
 
 ### GET /health
 
@@ -85,18 +104,15 @@ pytest tests/test_routing.py::test_blaze_routing -v
 
 ## Frontend Integration
 
-This backend is designed to work with the existing NGX GENESIS Chat frontend:
-https://github.com/270aldo/genesis_A2UI_chatbot
+The frontend in this repo calls the backend via `frontend/services/api.ts`.
+By default it targets `http://localhost:8000`, or override with:
 
-Update the frontend's `geminiService.ts` to point to this backend:
-
-```typescript
-const response = await fetch('http://localhost:8000/api/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: prompt, session_id: 'default' })
-});
 ```
+# frontend/.env.local
+VITE_API_URL=http://localhost:8000
+```
+
+The frontend sends `{ message, session_id, attachments }` to `/api/chat`.
 
 ## Project Structure
 

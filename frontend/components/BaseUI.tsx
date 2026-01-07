@@ -10,7 +10,7 @@ interface GlassCardProps {
 
 export const GlassCard: React.FC<GlassCardProps> = ({ 
   children, 
-  borderColor = COLORS.nexus, 
+  borderColor = COLORS.genesis, 
   className = "" 
 }) => (
   <div className={`relative overflow-hidden rounded-3xl p-5 mb-3 animate-in ${className}`}
@@ -55,7 +55,7 @@ interface ProgressBarProps {
 export const ProgressBar: React.FC<ProgressBarProps> = ({ 
   value, 
   max, 
-  color = COLORS.nexus, 
+  color = COLORS.genesis, 
   height = 6 
 }) => (
   <div className="w-full bg-white/10 rounded-full overflow-hidden" style={{ height }}>
@@ -79,7 +79,7 @@ interface ActionButtonProps {
 
 export const ActionButton: React.FC<ActionButtonProps> = ({ 
   children, 
-  color = COLORS.nexus, 
+  color = COLORS.genesis, 
   onClick, 
   variant = 'primary',
   className = ""

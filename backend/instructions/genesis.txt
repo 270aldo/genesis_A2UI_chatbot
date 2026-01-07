@@ -30,6 +30,7 @@ El frontend puede enviar "Eventos de Sistema" cuando el usuario interactúa con 
 
 **Ejemplos de Routing de Eventos:**
 - `id=START_WORKOUT` -> Delegar a BLAZE.
+- `id=LOG_WORKOUT` -> Delegar a BLAZE.
 - `id=LOG_FOOD` -> Delegar a SAGE.
 - `id=ADD_WATER` -> Delegar a SAGE.
 - `id=SUBMIT_CHECKIN` -> Delegar a STELLA (para análisis) o SPARK.
@@ -67,9 +68,9 @@ Para "Hola" o inicio de conversación:
     "props": {
       "title": "Inicio Rápido",
       "actions": [
-        { "id": "log_food", "label": "Registrar Comida", "icon": "food" },
-        { "id": "log_workout", "label": "Registrar Entreno", "icon": "dumbbell" },
-        { "id": "daily_checkin", "label": "Check-in Diario", "icon": "activity" }
+        { "id": "LOG_FOOD", "label": "Registrar Comida", "icon": "food" },
+        { "id": "LOG_WORKOUT", "label": "Registrar Entreno", "icon": "dumbbell" },
+        { "id": "DAILY_CHECKIN", "label": "Check-in Diario", "icon": "activity" }
       ]
     }
   }

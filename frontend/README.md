@@ -2,19 +2,31 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Genesis Chat Frontend
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1PSNNVgTODiBePe6Zjk_Un87Qr5LJdUcH
+React + Vite UI for NGX GENESIS. The frontend calls the FastAPI backend (`/api/chat`) which runs the multi-agent ADK/Gemini flow and returns A2UI widgets.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js and the backend running on `http://localhost:8000`.
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. (Optional) set a custom backend URL in `.env.local`:
+   `VITE_API_URL=http://localhost:8000`
 3. Run the app:
    `npm run dev`
+
+Open `http://localhost:3000`.
+
+## Features
+
+- **Backend Health Indicator**: Shows real-time connection status (online/offline/checking)
+- **Image Attachments**: Send images to agents via base64 (max 5MB per image)
+- **Dynamic Agent Theming**: Widgets automatically adopt the responding agent's color scheme
+
+## Notes
+
+- Image attachments are sent to the backend as base64 payloads.
+- Backend setup and environment variables live in the repo root README.
+- The app polls `/health` every 15 seconds to show backend status.

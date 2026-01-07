@@ -5,7 +5,7 @@ import {
 import { Message, Attachment, Session } from './types';
 import { COLORS, getAgentColor } from './constants';
 import { A2UIMediator } from './components/Widgets';
-import { generateContent } from './services/api';
+import { generateContent, API_URL } from './services/api';
 import { Sidebar } from './components/Sidebar';
 
 // Mock Data for Sessions
@@ -20,11 +20,12 @@ const App: React.FC = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string>('1');
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [attachments, setAttachments] = useState<Attachment[]>([]); 
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'assistant', 
-      agent: 'NEXUS', 
+      agent: 'GENESIS', 
       text: 'Conexión segura establecida con Genesis Core. ¿En qué trabajamos hoy?', 
       timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
       payload: {
@@ -32,9 +33,9 @@ const App: React.FC = () => {
         props: {
           title: 'Inicio Rápido',
           actions: [
-            { id: 'log_food', label: 'Registrar Comida', icon: 'food' },
-            { id: 'log_workout', label: 'Registrar Entreno', icon: 'dumbbell' },
-            { id: 'daily_checkin', label: 'Check-in Diario', icon: 'activity' }
+            { id: 'LOG_FOOD', label: 'Registrar Comida', icon: 'food' },
+            { id: 'LOG_WORKOUT', label: 'Registrar Entreno', icon: 'dumbbell' },
+            { id: 'DAILY_CHECKIN', label: 'Check-in Diario', icon: 'activity' }
           ]
         }
       }
@@ -62,6 +63,30 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Backend health indicator
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkHealth = async () => {
+      try {
+        const response = await fetch(`${API_URL}/health`, { method: 'GET' });
+        if (!isMounted) return;
+        setBackendStatus(response.ok ? 'online' : 'offline');
+      } catch (error) {
+        if (!isMounted) return;
+        setBackendStatus('offline');
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 15000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const handleSend = async (e?: React.FormEvent | React.KeyboardEvent, textOverride?: string) => {
     if (e) e.preventDefault();
     const txt = textOverride || input;
@@ -87,7 +112,7 @@ const App: React.FC = () => {
       const aiMsg: Message = {
         role: 'assistant',
         text: result.text || "Información recibida.",
-        agent: result.agent || "NEXUS",
+        agent: result.agent || "GENESIS",
         payload: result.payload,
         timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
       };
@@ -97,7 +122,7 @@ const App: React.FC = () => {
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: "Error de comunicación con el servidor.",
-        agent: "NEXUS",
+        agent: "GENESIS",
         timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
       }]);
     } finally {
@@ -129,7 +154,7 @@ const App: React.FC = () => {
       const aiMsg: Message = {
         role: 'assistant',
         text: result.text || "Acción procesada.",
-        agent: result.agent || "NEXUS",
+        agent: result.agent || "GENESIS",
         payload: result.payload,
         timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
       };
@@ -139,7 +164,7 @@ const App: React.FC = () => {
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: "Error al procesar la acción.",
-        agent: "NEXUS",
+        agent: "GENESIS",
         timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
       }]);
     } finally {
@@ -157,15 +182,52 @@ const App: React.FC = () => {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const fakeUrl = URL.createObjectURL(file);
-      setAttachments(prev => [...prev, { type: 'image', url: fakeUrl, name: file.name }]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxBytes = 5 * 1024 * 1024; // 5MB guardrail for base64 payloads
+    if (file.size > maxBytes) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: 'La imagen es demasiado grande para procesarla. Intenta con una menor a 5MB.',
+        agent: 'GENESIS',
+        payload: { type: 'alert-banner', props: { type: 'warning', message: 'Imagen > 5MB.' } },
+        timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      }]);
+      e.target.value = '';
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const [header, base64] = result.split(',');
+      const mimeMatch = header?.match(/data:(.*);base64/);
+      const mimeType = mimeMatch?.[1] || file.type || 'image/jpeg';
+      const previewUrl = result;
+
+      setAttachments(prev => [
+        ...prev,
+        {
+          type: 'image',
+          url: previewUrl,
+          data: base64,
+          mimeType,
+          name: file.name,
+          size: file.size
+        }
+      ]);
+    };
+
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const removeAttachment = (index: number) => {
-    URL.revokeObjectURL(attachments[index].url);
+    const url = attachments[index]?.url;
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -175,6 +237,14 @@ const App: React.FC = () => {
       handleSend();
     }
   };
+
+  const statusConfig = {
+    online: { dotClass: 'bg-[#00FF88] animate-pulse', label: 'Backend Online' },
+    offline: { dotClass: 'bg-[#FF4444]', label: 'Backend Offline' },
+    checking: { dotClass: 'bg-[#FBBF24] animate-pulse', label: 'Checking Backend' }
+  } as const;
+
+  const status = statusConfig[backendStatus];
 
   return (
     <div className="flex h-screen bg-[#050505] text-white font-sans overflow-hidden">
@@ -188,7 +258,7 @@ const App: React.FC = () => {
         onNewSession={() => {
            setMessages([{ 
              role: 'assistant', 
-             agent: 'NEXUS', 
+             agent: 'GENESIS', 
              text: 'Nueva sesión iniciada.', 
              timestamp: new Date().toLocaleTimeString() 
            }]);
@@ -212,8 +282,8 @@ const App: React.FC = () => {
             <div>
               <h1 className="font-bold tracking-tight text-sm">Genesis Chat</h1>
               <div className="flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${process.env.API_KEY ? 'bg-[#00FF88] animate-pulse' : 'bg-[#FFB800]'}`}></span>
-                <span className="text-[10px] text-white/40">{process.env.API_KEY ? 'Gemini Connected' : 'Simulation Mode'}</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${status.dotClass}`}></span>
+                <span className="text-[10px] text-white/40">{status.label}</span>
               </div>
             </div>
           </div>
@@ -262,7 +332,7 @@ const App: React.FC = () => {
                 {/* Widgets */}
                 {msg.payload && (
                   <div className="w-full max-w-sm mt-3">
-                    <A2UIMediator payload={msg.payload} onAction={(id, d) => handleAction(id, d)} />
+                    <A2UIMediator payload={msg.payload} onAction={(id, d) => handleAction(id, d)} agent={msg.agent} />
                   </div>
                 )}
 

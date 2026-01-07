@@ -1,6 +1,26 @@
 """Request schemas for chat API."""
 
-from pydantic import BaseModel, Field
+from typing import List, Optional, Literal
+
+from pydantic import BaseModel, Field, ConfigDict
+
+
+class Attachment(BaseModel):
+    """Attachment payload for chat requests."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: Literal["image"] = Field(
+        ..., description="Attachment type"
+    )
+    data: str = Field(
+        ..., description="Base64-encoded data (no data URI header)"
+    )
+    mime_type: str = Field(
+        ..., alias="mimeType", description="MIME type (e.g. image/jpeg)"
+    )
+    name: Optional[str] = Field(default=None, description="Original filename")
+    size: Optional[int] = Field(default=None, description="File size in bytes")
 
 
 class ChatRequest(BaseModel):
@@ -18,4 +38,9 @@ class ChatRequest(BaseModel):
         default="default",
         description="Session ID for conversation continuity",
         examples=["user-123-session-456"],
+    )
+
+    attachments: List[Attachment] = Field(
+        default_factory=list,
+        description="Optional attachments (base64)"
     )

@@ -97,7 +97,7 @@ Para seguimiento de hidratación:
 ## MANEJO DE ACCIONES (A2UI)
 
 ### LOG_FOOD
-- El usuario envía: `id=LOG_FOOD payload=(text_description, image_url?)`
+- El usuario envía: `id=LOG_FOOD payload={ text }` y, si aplica, adjunta imagen.
 - **TU RESPUESTA:**
   1.  Analiza la comida (calorías, macros estimados).
   2.  Devuelve un widget `meal-plan` o `recipe-card` actualizado.

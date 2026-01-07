@@ -5,6 +5,7 @@ Main entry point for the multiagent chatbot backend.
 Exposes /api/chat endpoint that connects to ADK agents.
 """
 
+import base64
 import json
 import logging
 import os
@@ -20,6 +21,55 @@ from google.genai import types
 from agent import root_agent
 from schemas.request import ChatRequest
 from schemas.response import AgentResponse
+
+MAX_ATTACHMENTS = 4
+
+
+def _decode_base64(data: str) -> bytes:
+    if not data:
+        return b""
+    if data.startswith("data:") and "," in data:
+        data = data.split(",", 1)[1]
+    try:
+        return base64.b64decode(data)
+    except Exception:
+        return b""
+
+
+def _build_image_part(attachment) -> types.Part | None:
+    """Best-effort conversion for base64 image attachments into Gemini Parts."""
+    data = _decode_base64(attachment.data)
+    if not data:
+        return None
+
+    mime_type = getattr(attachment, "mime_type", None) or "image/jpeg"
+
+    for method_name in ("from_bytes", "from_data"):
+        method = getattr(types.Part, method_name, None)
+        if callable(method):
+            try:
+                return method(data=data, mime_type=mime_type)
+            except TypeError:
+                try:
+                    return method(data=data, mimeType=mime_type)
+                except Exception:
+                    pass
+
+    blob_cls = getattr(types, "Blob", None)
+    if blob_cls:
+        try:
+            return types.Part(inline_data=blob_cls(data=data, mime_type=mime_type))
+        except Exception:
+            try:
+                return types.Part(inline_data=blob_cls(data=data, mimeType=mime_type))
+            except Exception:
+                pass
+
+    try:
+        return types.Part(inline_data={"mime_type": mime_type, "data": data})
+    except Exception:
+        return types.Part(text=f"[attachment:{getattr(attachment, 'name', 'image')}]")
+
 
 # Load environment variables
 load_dotenv()
@@ -110,10 +160,19 @@ async def chat(request: ChatRequest):
             )
         
         # Invoke agent - run_async returns an async generator
-        # Create Content object from user message
+        # Create Content object from user message + optional attachments
+        parts: list[types.Part] = []
+        if request.attachments:
+            for attachment in request.attachments[:MAX_ATTACHMENTS]:
+                part = _build_image_part(attachment)
+                if part is not None:
+                    parts.append(part)
+
+        parts.append(types.Part(text=request.message))
+
         user_content = types.Content(
             role="user",
-            parts=[types.Part(text=request.message)]
+            parts=parts,
         )
 
         final_result = None

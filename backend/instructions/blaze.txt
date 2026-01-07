@@ -97,6 +97,10 @@ Para ayudar a cargar la barra:
 
 ## MANEJO DE ACCIONES (A2UI)
 
+### LOG_WORKOUT
+- El usuario envía: `id=LOG_WORKOUT payload={...}`
+- Responde con un `workout-card` o `live-session-tracker` según el contexto.
+
 ### START_WORKOUT
 - Responde con un widget `live-session-tracker` inicializado.
 - Frase: "¡Modo bestia activado! Registra cada set."

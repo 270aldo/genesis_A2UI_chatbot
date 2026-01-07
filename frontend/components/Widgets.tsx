@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Cpu, Zap, UtensilsCrossed, Droplets, AlertTriangle,
   Clock, Moon, CheckCircle2, Play, Pause, RotateCcw,
-  Pill, Quote, ListChecks, Flame, ClipboardList, Activity,
+  Pill, Flame, Activity,
   TrendingUp, TrendingDown, Lightbulb, Brain
 } from 'lucide-react';
 import { GlassCard, AgentBadge, ProgressBar, ActionButton, GlassInput, GlassSlider } from './BaseUI';
 import { COLORS } from '../constants';
-import { WidgetPayload } from '../types';
+import { AgentType, WidgetPayload } from '../types';
 
 // --- Types for Widgets ---
 
@@ -135,104 +135,152 @@ interface BreathworkProps {
   technique?: 'box' | '4-7-8' | 'calm';
 }
 
+type AgentMeta = {
+  name: AgentType;
+  color: string;
+  icon: any;
+};
+
+const getAgentMeta = (agent?: AgentType, fallback: AgentType = 'GENESIS'): AgentMeta => {
+  const resolved = (agent || fallback).toUpperCase();
+
+  switch (resolved) {
+    case 'BLAZE':
+      return { name: 'BLAZE', color: COLORS.blaze, icon: Zap };
+    case 'SAGE':
+      return { name: 'SAGE', color: COLORS.sage, icon: UtensilsCrossed };
+    case 'SPARK':
+      return { name: 'SPARK', color: COLORS.spark, icon: Flame };
+    case 'STELLA':
+      return { name: 'STELLA', color: COLORS.stella, icon: Brain };
+    case 'LOGOS':
+      return { name: 'LOGOS', color: COLORS.logos, icon: Lightbulb };
+    default:
+      return { name: 'GENESIS', color: COLORS.genesis, icon: Cpu };
+  }
+};
+
+const AgentCard: React.FC<{
+  agent?: AgentType;
+  fallback: AgentType;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ agent, fallback, className, children }) => {
+  const meta = getAgentMeta(agent, fallback);
+
+  return (
+    <GlassCard borderColor={meta.color} className={className}>
+      <AgentBadge name={meta.name} color={meta.color} icon={meta.icon} />
+      {children}
+    </GlassCard>
+  );
+};
+
 // --- Widget Components ---
 
-export const ProgressDashboard: React.FC<{ data: DashboardProps }> = ({ data }) => (
-  <GlassCard borderColor={COLORS.nexus}>
-    <AgentBadge name="NEXUS" color={COLORS.nexus} icon={Cpu} />
-    <div className="flex justify-between items-start mb-4">
-      <div>
-        <h3 className="font-bold text-white text-sm">{data.title || 'Resumen'}</h3>
-        <p className="text-[10px] text-white/40">{data.subtitle}</p>
-      </div>
-      <span className="text-xl font-bold text-white">{data.progress}%</span>
-    </div>
-    <ProgressBar value={data.progress} max={100} color={COLORS.nexus} />
-    <div className="grid grid-cols-2 gap-2 mt-4">
-      {data.metrics?.map((m, i) => (
-        <div key={i} className="bg-white/5 p-2 rounded-lg border border-white/5">
-          <p className="text-[9px] uppercase text-white/40">{m.label}</p>
-          <span className="font-bold text-white">{m.value}</span>
-        </div>
-      ))}
-    </div>
-  </GlassCard>
-);
+export const ProgressDashboard: React.FC<{ data: DashboardProps; agent?: AgentType }> = ({ data, agent }) => {
+  const meta = getAgentMeta(agent, 'STELLA');
 
-export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => (
-  <GlassCard borderColor={COLORS.blaze}>
-    <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
-    <div className="flex justify-between items-start mb-4">
-      <div>
-        <h3 className="font-bold text-white">{data.title}</h3>
-        <p className="text-[10px] text-white/40">{data.category}</p>
-      </div>
-      <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-white/70">{data.duration}</span>
-    </div>
-    <div className="space-y-2 mb-4">
-      {data.exercises?.slice(0, 3).map((ex, i) => (
-        <div key={i} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg">
-          <div className="w-6 h-6 rounded-full bg-[#FF4500]/20 text-[#FF4500] flex items-center justify-center text-[10px] font-bold">
-            {i + 1}
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-white">{ex.name}</p>
-            <p className="text-[10px] text-white/40">{ex.sets}×{ex.reps} · {ex.load}</p>
-          </div>
+  return (
+    <AgentCard agent={agent} fallback="STELLA">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="font-bold text-white text-sm">{data.title || 'Resumen'}</h3>
+          <p className="text-[10px] text-white/40">{data.subtitle}</p>
         </div>
-      ))}
-    </div>
-    {data.coachNote && (
-      <div className="mb-4 p-3 bg-[#FF4500]/10 border border-[#FF4500]/20 rounded-lg text-xs text-white/80 italic">
-        Note: {data.coachNote}
+        <span className="text-xl font-bold text-white">{data.progress}%</span>
       </div>
-    )}
-    <ActionButton color={COLORS.blaze} onClick={() => onAction('START_WORKOUT', { id: data.workoutId })}>
-      Comenzar
-    </ActionButton>
-  </GlassCard>
-);
+      <ProgressBar value={data.progress} max={100} color={meta.color} />
+      <div className="grid grid-cols-2 gap-2 mt-4">
+        {data.metrics?.map((m, i) => (
+          <div key={i} className="bg-white/5 p-2 rounded-lg border border-white/5">
+            <p className="text-[9px] uppercase text-white/40">{m.label}</p>
+            <span className="font-bold text-white">{m.value}</span>
+          </div>
+        ))}
+      </div>
+    </AgentCard>
+  );
+};
 
-export const MealPlan: React.FC<{ data: MealPlanProps }> = ({ data }) => (
-  <GlassCard borderColor={COLORS.macro}>
-    <AgentBadge name="MACRO" color={COLORS.macro} icon={UtensilsCrossed} />
+export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'BLAZE');
+
+  return (
+    <AgentCard agent={agent} fallback="BLAZE">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="font-bold text-white">{data.title}</h3>
+          <p className="text-[10px] text-white/40">{data.category}</p>
+        </div>
+        <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-white/70">{data.duration}</span>
+      </div>
+      <div className="space-y-2 mb-4">
+        {data.exercises?.slice(0, 3).map((ex, i) => (
+          <div key={i} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${meta.color}33`, color: meta.color }}>
+              {i + 1}
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-white">{ex.name}</p>
+              <p className="text-[10px] text-white/40">{ex.sets}×{ex.reps} · {ex.load}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {data.coachNote && (
+        <div className="mb-4 p-3 rounded-lg text-xs text-white/80 italic" style={{ background: `${meta.color}1A`, border: `1px solid ${meta.color}33` }}>
+          Note: {data.coachNote}
+        </div>
+      )}
+      <ActionButton color={meta.color} onClick={() => onAction('START_WORKOUT', { id: data.workoutId })}>
+        Comenzar
+      </ActionButton>
+    </AgentCard>
+  );
+};
+
+export const MealPlan: React.FC<{ data: MealPlanProps; agent?: AgentType }> = ({ data, agent }) => (
+  <AgentCard agent={agent} fallback="SAGE">
     <div className="flex justify-between items-center mb-3">
       <h3 className="font-bold text-white">Plan</h3>
       <span className="text-xs text-white/40">{data.totalKcal} kcal</span>
     </div>
     <div className="space-y-2">
       {data.meals?.map((m, i) => (
-        <div key={i} className={`flex justify-between items-center p-2 rounded-lg ${m.highlight ? 'bg-[#FFB800]/10 border border-[#FFB800]/20' : 'bg-white/5'}`}>
+        <div key={i} className={`flex justify-between items-center p-2 rounded-lg ${m.highlight ? 'bg-[#FBBF24]/10 border border-[#FBBF24]/20' : 'bg-white/5'}`}>
           <span className="text-[10px] font-bold text-white/50 w-12">{m.time}</span>
-          <span className={`text-xs flex-1 ${m.highlight ? 'text-[#FFB800] font-bold' : 'text-white'}`}>{m.name}</span>
+          <span className={`text-xs flex-1 ${m.highlight ? 'text-[#FBBF24] font-bold' : 'text-white'}`}>{m.name}</span>
           <span className="text-[10px] text-white/30">{m.kcal}</span>
         </div>
       ))}
     </div>
-  </GlassCard>
+  </AgentCard>
 );
 
-export const HydrationTracker: React.FC<{ data: HydrationProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => (
-  <GlassCard borderColor={COLORS.aqua}>
-    <AgentBadge name="AQUA" color={COLORS.aqua} icon={Droplets} />
-    <div className="flex justify-between items-end mb-3">
-      <span className="text-[10px] font-bold text-white/40 uppercase">Hidratación</span>
-      <div className="text-right">
-        <span className="text-2xl font-bold text-[#00D4FF]">{data.current}</span>
-        <span className="text-xs text-white/30"> / {data.goal}ml</span>
+export const HydrationTracker: React.FC<{ data: HydrationProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'SAGE');
+
+  return (
+    <AgentCard agent={agent} fallback="SAGE">
+      <div className="flex justify-between items-end mb-3">
+        <span className="text-[10px] font-bold text-white/40 uppercase">Hidratación</span>
+        <div className="text-right">
+          <span className="text-2xl font-bold" style={{ color: meta.color }}>{data.current}</span>
+          <span className="text-xs text-white/30"> / {data.goal}ml</span>
+        </div>
       </div>
-    </div>
-    <ProgressBar value={data.current} max={data.goal} color={COLORS.aqua} />
-    <div className="flex gap-2 mt-4">
-      <ActionButton variant="secondary" onClick={() => onAction('ADD_WATER', 250)}>+250</ActionButton>
-      <ActionButton color={COLORS.aqua} onClick={() => onAction('ADD_WATER', 500)}>+500</ActionButton>
-    </div>
-  </GlassCard>
-);
+      <ProgressBar value={data.current} max={data.goal} color={meta.color} />
+      <div className="flex gap-2 mt-4">
+        <ActionButton variant="secondary" onClick={() => onAction('ADD_WATER', 250)}>+250</ActionButton>
+        <ActionButton color={meta.color} onClick={() => onAction('ADD_WATER', 500)}>+500</ActionButton>
+      </div>
+    </AgentCard>
+  );
+};
 
-export const RecipeCard: React.FC<{ data: RecipeProps }> = ({ data }) => (
-  <GlassCard borderColor={COLORS.macro}>
-    <AgentBadge name="MACRO" color={COLORS.macro} icon={UtensilsCrossed} />
+export const RecipeCard: React.FC<{ data: RecipeProps; agent?: AgentType }> = ({ data, agent }) => (
+  <AgentCard agent={agent} fallback="SAGE">
     <div className="mb-4">
       <div className="flex gap-2 mb-2 flex-wrap">
         {data.tags?.map((tag, i) => (
@@ -261,44 +309,47 @@ export const RecipeCard: React.FC<{ data: RecipeProps }> = ({ data }) => (
         </ol>
       </div>
     </div>
-  </GlassCard>
+  </AgentCard>
 );
 
-export const SleepAnalysis: React.FC<{ data: SleepProps }> = ({ data }) => (
-  <GlassCard borderColor={COLORS.luna}>
-    <AgentBadge name="LUNA" color={COLORS.luna} icon={Moon} />
-    <div className="flex justify-between items-center mb-6">
-      <div>
-        <h3 className="text-white font-bold">Sleep Score</h3>
-        <p className="text-xs text-white/50">{data.quality} Quality</p>
-      </div>
-      <div className="relative w-16 h-16 flex items-center justify-center">
-        <svg className="w-full h-full -rotate-90">
-          <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
-          <circle cx="32" cy="32" r="28" stroke={COLORS.luna} strokeWidth="4" fill="none" 
-            strokeDasharray={175} strokeDashoffset={175 - (175 * data.score) / 100} className="transition-all duration-1000" />
-        </svg>
-        <span className="absolute text-sm font-bold">{data.score}</span>
-      </div>
-    </div>
-    <div className="grid grid-cols-3 gap-2">
-      <div className="bg-white/5 p-2 rounded-lg text-center">
-        <p className="text-[10px] text-white/40 uppercase">Deep</p>
-        <p className="text-sm font-bold text-white">{data.stages.deep}</p>
-      </div>
-      <div className="bg-white/5 p-2 rounded-lg text-center">
-        <p className="text-[10px] text-white/40 uppercase">REM</p>
-        <p className="text-sm font-bold text-white">{data.stages.rem}</p>
-      </div>
-      <div className="bg-white/5 p-2 rounded-lg text-center">
-        <p className="text-[10px] text-white/40 uppercase">Light</p>
-        <p className="text-sm font-bold text-white">{data.stages.light}</p>
-      </div>
-    </div>
-  </GlassCard>
-);
+export const SleepAnalysis: React.FC<{ data: SleepProps; agent?: AgentType }> = ({ data, agent }) => {
+  const meta = getAgentMeta(agent, 'STELLA');
 
-export const TimerWidget: React.FC<{ data: TimerProps }> = ({ data }) => {
+  return (
+    <AgentCard agent={agent} fallback="STELLA">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h3 className="text-white font-bold">Sleep Score</h3>
+          <p className="text-xs text-white/50">{data.quality} Quality</p>
+        </div>
+        <div className="relative w-16 h-16 flex items-center justify-center">
+          <svg className="w-full h-full -rotate-90">
+            <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
+            <circle cx="32" cy="32" r="28" stroke={meta.color} strokeWidth="4" fill="none" 
+              strokeDasharray={175} strokeDashoffset={175 - (175 * data.score) / 100} className="transition-all duration-1000" />
+          </svg>
+          <span className="absolute text-sm font-bold">{data.score}</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40 uppercase">Deep</p>
+          <p className="text-sm font-bold text-white">{data.stages.deep}</p>
+        </div>
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40 uppercase">REM</p>
+          <p className="text-sm font-bold text-white">{data.stages.rem}</p>
+        </div>
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40 uppercase">Light</p>
+          <p className="text-sm font-bold text-white">{data.stages.light}</p>
+        </div>
+      </div>
+    </AgentCard>
+  );
+};
+
+export const TimerWidget: React.FC<{ data: TimerProps; agent?: AgentType }> = ({ data, agent }) => {
   const [timeLeft, setTimeLeft] = useState(data.seconds);
   const [isActive, setIsActive] = useState(data.autoStart || false);
 
@@ -319,8 +370,7 @@ export const TimerWidget: React.FC<{ data: TimerProps }> = ({ data }) => {
   };
 
   return (
-    <GlassCard borderColor={COLORS.blaze}>
-      <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Clock} />
+    <AgentCard agent={agent} fallback="BLAZE">
       <div className="text-center py-4">
         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">{data.label}</p>
         <div className="text-5xl font-mono font-bold text-white mb-6 tabular-nums">
@@ -337,23 +387,22 @@ export const TimerWidget: React.FC<{ data: TimerProps }> = ({ data }) => {
           </button>
         </div>
       </div>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
-export const QuoteCard: React.FC<{ data: QuoteProps }> = ({ data }) => (
-  <GlassCard borderColor={COLORS.nexus}>
-    <AgentBadge name="NEXUS" color={COLORS.nexus} icon={Quote} />
+export const QuoteCard: React.FC<{ data: QuoteProps; agent?: AgentType }> = ({ data, agent }) => (
+  <AgentCard agent={agent} fallback="SPARK">
     <div className="text-center px-2 py-4">
       <p className="text-lg font-serif italic text-white/90 leading-relaxed mb-4">"{data.quote}"</p>
       <div className="w-8 h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent mx-auto mb-2" />
       <p className="text-xs font-bold text-white/50 uppercase tracking-widest">{data.author}</p>
     </div>
-  </GlassCard>
+  </AgentCard>
 );
 
 // Insight Card - STELLA's analysis and recommendations
-export const InsightCard: React.FC<{ data: InsightProps }> = ({ data }) => {
+export const InsightCard: React.FC<{ data: InsightProps; agent?: AgentType }> = ({ data, agent }) => {
   const trendConfig = {
     positive: { icon: TrendingUp, color: '#00FF88', label: 'Positivo' },
     negative: { icon: TrendingDown, color: '#FF4444', label: 'Atención' },
@@ -365,8 +414,7 @@ export const InsightCard: React.FC<{ data: InsightProps }> = ({ data }) => {
   const trendColor = trendConfig[trend].color;
 
   return (
-    <GlassCard borderColor={COLORS.stella}>
-      <AgentBadge name="STELLA" color={COLORS.stella} icon={Brain} />
+    <AgentCard agent={agent} fallback="STELLA">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-white text-sm">{data.title}</h3>
@@ -390,13 +438,12 @@ export const InsightCard: React.FC<{ data: InsightProps }> = ({ data }) => {
           </div>
         )}
       </div>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
-export const SupplementStack: React.FC<{ data: SupplementProps }> = ({ data }) => (
-  <GlassCard borderColor={COLORS.macro}>
-    <AgentBadge name="MACRO" color={COLORS.macro} icon={Pill} />
+export const SupplementStack: React.FC<{ data: SupplementProps; agent?: AgentType }> = ({ data, agent }) => (
+  <AgentCard agent={agent} fallback="SAGE">
     <h3 className="font-bold text-white text-sm mb-3">Daily Stack</h3>
     <div className="space-y-2">
       {data.items?.map((item, i) => (
@@ -412,10 +459,10 @@ export const SupplementStack: React.FC<{ data: SupplementProps }> = ({ data }) =
         </div>
       ))}
     </div>
-  </GlassCard>
+  </AgentCard>
 );
 
-export const ChecklistWidget: React.FC<{ data: ChecklistProps }> = ({ data }) => {
+export const ChecklistWidget: React.FC<{ data: ChecklistProps; agent?: AgentType }> = ({ data, agent }) => {
   const [items, setItems] = useState(data.items);
 
   const toggleItem = (idx: number) => {
@@ -425,8 +472,7 @@ export const ChecklistWidget: React.FC<{ data: ChecklistProps }> = ({ data }) =>
   };
 
   return (
-    <GlassCard borderColor={COLORS.nexus}>
-      <AgentBadge name="NEXUS" color={COLORS.nexus} icon={ListChecks} />
+    <AgentCard agent={agent} fallback="SPARK">
       <h3 className="font-bold text-white text-sm mb-3">{data.title}</h3>
       <div className="space-y-2">
         {items.map((item, i) => (
@@ -446,16 +492,17 @@ export const ChecklistWidget: React.FC<{ data: ChecklistProps }> = ({ data }) =>
           </div>
         ))}
       </div>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
 // --- NEW INTERACTIVE WIDGETS ---
 
 // 11. Daily Check-in Widget (Form)
-export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const meta = getAgentMeta(agent, 'SPARK');
 
   const handleChange = (id: string, value: string | number) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -468,19 +515,17 @@ export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: st
 
   if (submitted) {
     return (
-      <GlassCard borderColor={COLORS.nexus}>
-        <AgentBadge name="NEXUS" color={COLORS.nexus} icon={ClipboardList} />
+      <AgentCard agent={agent} fallback="SPARK">
         <div className="flex items-center gap-3 text-[#00FF88]">
           <CheckCircle2 size={24} />
           <p className="text-sm font-bold">Check-in Completado</p>
         </div>
-      </GlassCard>
+      </AgentCard>
     );
   }
 
   return (
-    <GlassCard borderColor={COLORS.nexus}>
-      <AgentBadge name="NEXUS" color={COLORS.nexus} icon={ClipboardList} />
+    <AgentCard agent={agent} fallback="SPARK">
       <h3 className="font-bold text-white text-sm mb-1">Daily Check-in</h3>
       <p className="text-[10px] text-white/40 mb-4">{data.date}</p>
 
@@ -505,8 +550,8 @@ export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: st
           </div>
         ))}
       </div>
-      <ActionButton onClick={handleSubmit} color={COLORS.nexus}>Guardar Registro</ActionButton>
-    </GlassCard>
+      <ActionButton onClick={handleSubmit} color={meta.color}>Guardar Registro</ActionButton>
+    </AgentCard>
   );
 };
 
@@ -546,12 +591,13 @@ interface ExerciseProgress {
   sets: SetRecord[];
 }
 
-export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
   const [currentSetIdx, setCurrentSetIdx] = useState(0);
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
   const [isFinished, setIsFinished] = useState(false);
+  const meta = getAgentMeta(agent, 'BLAZE');
 
   // Track all completed sets locally
   const [workoutLog, setWorkoutLog] = useState<ExerciseProgress[]>(
@@ -620,20 +666,18 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
 
   if (isFinished) {
     return (
-      <GlassCard borderColor={COLORS.blaze}>
-        <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
+      <AgentCard agent={agent} fallback="BLAZE">
         <div className="text-center py-6">
           <div className="text-4xl mb-2">🔥</div>
           <h2 className="text-xl font-bold text-white mb-2">¡Entrenamiento Completado!</h2>
           <p className="text-white/60 text-sm">BLAZE está preparando tu resumen...</p>
         </div>
-      </GlassCard>
+      </AgentCard>
     );
   }
 
   return (
-    <GlassCard borderColor={COLORS.blaze}>
-      <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
+    <AgentCard agent={agent} fallback="BLAZE">
 
       {/* Header Progress */}
       <div className="flex justify-between items-center mb-2">
@@ -641,7 +685,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
         <span className="text-[10px] text-white/50">{currentExerciseIdx + 1}/{data.exercises.length}</span>
       </div>
       <div className="h-1 bg-white/10 rounded-full mb-4">
-        <div className="h-full bg-[#FF4500] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: meta.color }} />
       </div>
 
       {/* Current Exercise */}
@@ -660,11 +704,12 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
             key={idx}
             className={`flex-1 h-2 rounded-full transition-all ${
               idx < currentExerciseLog.sets.length
-                ? 'bg-[#FF4500]'
+                ? ''
                 : idx === currentSetIdx
-                ? 'bg-[#FF4500]/50 animate-pulse'
+                ? 'animate-pulse'
                 : 'bg-white/10'
             }`}
+            style={{ background: idx < currentExerciseLog.sets.length ? meta.color : idx === currentSetIdx ? `${meta.color}80` : undefined }}
           />
         ))}
       </div>
@@ -684,7 +729,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
       {/* Set Input */}
       <div className="bg-white/5 border border-white/5 rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-xs font-bold text-[#FF4500] uppercase tracking-wider">
+          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: meta.color }}>
             Set {currentSetIdx + 1} / {currentExercise.target.sets}
           </span>
           <span className="text-[10px] text-white/40">
@@ -716,20 +761,21 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
         </div>
       </div>
 
-      <ActionButton color={COLORS.blaze} onClick={handleLogSet}>
+      <ActionButton color={meta.color} onClick={handleLogSet}>
         {currentSetIdx < currentExercise.target.sets - 1
           ? `Registrar Set ${currentSetIdx + 1}`
           : currentExerciseIdx < data.exercises.length - 1
             ? 'Siguiente Ejercicio →'
             : '🔥 Terminar Entrenamiento'}
       </ActionButton>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
 // 14. Smart Grocery List
-export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [categories, setCategories] = useState(data.categories);
+  const meta = getAgentMeta(agent, 'SAGE');
 
   const toggleItem = (catIdx: number, itemIdx: number) => {
     const newCats = [...categories];
@@ -743,8 +789,7 @@ export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction:
   };
 
   return (
-    <GlassCard borderColor={COLORS.macro}>
-      <AgentBadge name="SAGE" color={COLORS.macro} icon={UtensilsCrossed} />
+    <AgentCard agent={agent} fallback="SAGE">
       <h3 className="font-bold text-white mb-4">{data.title}</h3>
       
       <div className="space-y-6 mb-6">
@@ -776,15 +821,15 @@ export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction:
         ))}
       </div>
 
-      <ActionButton color={COLORS.macro} onClick={handleFinish}>
+      <ActionButton color={meta.color} onClick={handleFinish}>
         Finalizar Compra
       </ActionButton>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
 // 15. Body Composition & Trends Visualizer
-export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
+export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   // Simple SVG chart logic
   const height = 150;
   const width = 300;
@@ -813,8 +858,7 @@ export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAct
   };
 
   return (
-    <GlassCard borderColor={COLORS.stella}>
-      <AgentBadge name="STELLA" color={COLORS.stella} icon={Activity} />
+    <AgentCard agent={agent} fallback="STELLA">
       <h3 className="font-bold text-white mb-1">{data.title}</h3>
       <div className="flex gap-4 text-[10px] uppercase tracking-wider mb-4">
         <div className="flex items-center gap-1">
@@ -872,12 +916,12 @@ export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAct
         </svg>
       </div>
       <p className="text-[10px] text-white/30 text-center mt-2 italic">Toca un día para analizar correlaciones.</p>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
 // 16. Plate Calculator (Utility)
-export const PlateCalculator: React.FC<{ data: PlateCalculatorProps }> = ({ data }) => {
+export const PlateCalculator: React.FC<{ data: PlateCalculatorProps; agent?: AgentType }> = ({ data, agent }) => {
   const [weight, setWeight] = useState(data.targetWeight);
   const bar = data.barWeight || 20;
   
@@ -899,8 +943,7 @@ export const PlateCalculator: React.FC<{ data: PlateCalculatorProps }> = ({ data
   const plates = calculatePlates(weight);
 
   return (
-    <GlassCard borderColor={COLORS.blaze}>
-      <AgentBadge name="BLAZE" color={COLORS.blaze} icon={Zap} />
+    <AgentCard agent={agent} fallback="BLAZE">
       <h3 className="font-bold text-white text-sm mb-4">Calculadora de Carga</h3>
       
       <div className="flex items-center gap-4 mb-6 justify-center">
@@ -930,15 +973,14 @@ export const PlateCalculator: React.FC<{ data: PlateCalculatorProps }> = ({ data
         })}
       </div>
       <p className="text-center text-xs text-white/40">Por lado (Barra {bar}kg)</p>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
 // 17. Habit Streak Flame (Gamification)
-export const HabitStreakFlame: React.FC<{ data: HabitStreakProps }> = ({ data }) => {
+export const HabitStreakFlame: React.FC<{ data: HabitStreakProps; agent?: AgentType }> = ({ data, agent }) => {
   return (
-    <GlassCard borderColor={COLORS.spark}>
-      <AgentBadge name="SPARK" color={COLORS.spark} icon={Flame} />
+    <AgentCard agent={agent} fallback="SPARK">
       <div className="text-center py-4">
         <div className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center">
           {/* Simple CSS-like flame layers */}
@@ -950,14 +992,15 @@ export const HabitStreakFlame: React.FC<{ data: HabitStreakProps }> = ({ data })
         <p className="text-xs font-bold text-[#FFB800] uppercase tracking-widest mb-2">Días de Racha</p>
         <p className="text-xs text-white/60 italic">"{data.message}"</p>
       </div>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
 // 18. Breathwork Guide (Mindset Tool)
-export const BreathworkGuide: React.FC<{ data: BreathworkProps }> = ({ data }) => {
+export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentType }> = ({ data, agent }) => {
   const [phase, setPhase] = useState<'Inhalar' | 'Sostener' | 'Exhalar'>('Inhalar');
   const [scale, setScale] = useState(1);
+  const meta = getAgentMeta(agent, 'STELLA');
   
   useEffect(() => {
     // 4-4-4 Box Breathing loop
@@ -977,19 +1020,18 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps }> = ({ data }) =
   }, []);
 
   return (
-    <GlassCard borderColor={COLORS.luna}>
-      <AgentBadge name="LUNA" color={COLORS.luna} icon={Moon} />
+    <AgentCard agent={agent} fallback="STELLA">
       <div className="h-48 flex flex-col items-center justify-center py-4 relative overflow-hidden">
         <div 
-          className="w-24 h-24 rounded-full border-4 border-[#A855F7]/30 flex items-center justify-center transition-all duration-[4000ms] ease-in-out relative z-10"
-          style={{ transform: `scale(${scale})`, backgroundColor: `rgba(168, 85, 247, ${scale === 1.5 ? 0.2 : 0})` }}
+          className="w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-[4000ms] ease-in-out relative z-10"
+          style={{ borderColor: `${meta.color}4D`, transform: `scale(${scale})`, backgroundColor: `${meta.color}${scale === 1.5 ? '33' : '00'}` }}
         >
           <div className="w-2 h-2 bg-white rounded-full"></div>
         </div>
         
         {/* Ripples */}
         <div className="absolute w-full h-full flex items-center justify-center pointer-events-none">
-           <div className={`w-32 h-32 rounded-full border border-[#A855F7]/20 absolute transition-all duration-[4000ms] ${scale === 1.5 ? 'scale-150 opacity-0' : 'scale-50 opacity-100'}`} />
+           <div className={`w-32 h-32 rounded-full border absolute transition-all duration-[4000ms] ${scale === 1.5 ? 'scale-150 opacity-0' : 'scale-50 opacity-100'}`} style={{ borderColor: `${meta.color}33` }} />
         </div>
 
         <div className="absolute bottom-4 text-center z-20">
@@ -997,7 +1039,7 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps }> = ({ data }) =
           <p className="text-[10px] text-white/40 mt-1">4-4-4 Box Breathing</p>
         </div>
       </div>
-    </GlassCard>
+    </AgentCard>
   );
 };
 
@@ -1021,50 +1063,51 @@ export const AlertBanner: React.FC<{ data: AlertProps }> = ({ data }) => (
 interface A2UIMediatorProps {
   payload?: WidgetPayload;
   onAction: (id: string, data: any) => void;
+  agent?: AgentType;
 }
 
-export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction }) => {
+export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction, agent }) => {
   if (!payload || !payload.type) return null;
 
   switch (payload.type) {
     case 'progress-dashboard':
-      return <ProgressDashboard data={payload.props} />;
+      return <ProgressDashboard data={payload.props} agent={agent} />;
     case 'workout-card':
-      return <WorkoutCard data={payload.props} onAction={onAction} />;
+      return <WorkoutCard data={payload.props} onAction={onAction} agent={agent} />;
     case 'meal-plan':
-      return <MealPlan data={payload.props} />;
+      return <MealPlan data={payload.props} agent={agent} />;
     case 'hydration-tracker':
-      return <HydrationTracker data={payload.props} onAction={onAction} />;
+      return <HydrationTracker data={payload.props} onAction={onAction} agent={agent} />;
     case 'recipe-card':
-      return <RecipeCard data={payload.props} />;
+      return <RecipeCard data={payload.props} agent={agent} />;
     case 'sleep-analysis':
-      return <SleepAnalysis data={payload.props} />;
+      return <SleepAnalysis data={payload.props} agent={agent} />;
     case 'timer-widget':
-      return <TimerWidget data={payload.props} />;
+      return <TimerWidget data={payload.props} agent={agent} />;
     case 'quote-card':
-      return <QuoteCard data={payload.props} />;
+      return <QuoteCard data={payload.props} agent={agent} />;
     case 'insight-card':
-      return <InsightCard data={payload.props} />;
+      return <InsightCard data={payload.props} agent={agent} />;
     case 'checklist':
-      return <ChecklistWidget data={payload.props} />;
+      return <ChecklistWidget data={payload.props} agent={agent} />;
     case 'supplement-stack':
-      return <SupplementStack data={payload.props} />;
+      return <SupplementStack data={payload.props} agent={agent} />;
     case 'daily-checkin':
-      return <DailyCheckIn data={payload.props} onAction={onAction} />;
+      return <DailyCheckIn data={payload.props} onAction={onAction} agent={agent} />;
     case 'quick-actions':
       return <QuickActions data={payload.props} onAction={onAction} />;
     case 'live-session-tracker':
-      return <LiveSessionTracker data={payload.props} onAction={onAction} />;
+      return <LiveSessionTracker data={payload.props} onAction={onAction} agent={agent} />;
     case 'smart-grocery-list':
-      return <SmartGroceryList data={payload.props} onAction={onAction} />;
+      return <SmartGroceryList data={payload.props} onAction={onAction} agent={agent} />;
     case 'body-comp-visualizer':
-      return <BodyCompVisualizer data={payload.props} onAction={onAction} />;
+      return <BodyCompVisualizer data={payload.props} onAction={onAction} agent={agent} />;
     case 'plate-calculator':
-      return <PlateCalculator data={payload.props} />;
+      return <PlateCalculator data={payload.props} agent={agent} />;
     case 'habit-streak':
-      return <HabitStreakFlame data={payload.props} />;
+      return <HabitStreakFlame data={payload.props} agent={agent} />;
     case 'breathwork-guide':
-      return <BreathworkGuide data={payload.props} />;
+      return <BreathworkGuide data={payload.props} agent={agent} />;
     case 'alert-banner':
       return <AlertBanner data={payload.props} />;
     default:
