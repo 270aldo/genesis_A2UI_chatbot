@@ -263,6 +263,150 @@ interface RecoveryScoreProps {
   suggestedIntensity: 'high' | 'medium' | 'low' | 'rest';
 }
 
+// --- NEW WIDGET TYPES (Phase 7 - Advanced) ---
+
+// STELLA - Analytics
+interface ProgressInsightProps {
+  title: string;
+  metric: string;
+  currentValue: number;
+  previousValue: number;
+  unit: string;
+  change: number;
+  changeType: 'increase' | 'decrease' | 'stable';
+  trend: 'positive' | 'negative' | 'neutral';
+  insight: string;
+  recommendation?: string;
+  chartData?: { label: string; value: number }[];
+}
+
+interface WeeklySummaryProps {
+  weekNumber: number;
+  dateRange: string;
+  highlights: {
+    icon: string;
+    label: string;
+    value: string;
+    trend?: 'up' | 'down' | 'stable';
+  }[];
+  achievements: string[];
+  areasToImprove: string[];
+  nextWeekFocus: string;
+  overallScore: number;
+}
+
+interface PRCelebrationProps {
+  exercise: string;
+  previousBest: { weight: number; reps: number; date: string };
+  newRecord: { weight: number; reps: number };
+  improvement: number;
+  improvementType: 'weight' | 'reps' | 'volume';
+  message: string;
+  rank?: number;
+  totalPRs?: number;
+}
+
+// WAVE - Recovery
+interface HRVTrendProps {
+  currentHRV: number;
+  baseline: number;
+  trend: 'improving' | 'declining' | 'stable';
+  history: { date: string; value: number }[];
+  interpretation: string;
+  recommendation: string;
+  readiness: 'high' | 'moderate' | 'low';
+}
+
+interface DeloadSuggestionProps {
+  reason: string;
+  indicators: {
+    name: string;
+    current: number;
+    baseline: number;
+    status: 'elevated' | 'normal' | 'low';
+  }[];
+  duration: string;
+  volumeReduction: number;
+  intensityReduction: number;
+  focusAreas: string[];
+  benefits: string[];
+}
+
+// TEMPO - Cardio
+interface CardioSessionTrackerProps {
+  sessionId: string;
+  type: 'steady-state' | 'intervals' | 'fartlek';
+  targetDuration: number;
+  currentDuration: number;
+  targetHeartRate: { min: number; max: number };
+  currentHeartRate?: number;
+  zones: {
+    name: string;
+    range: string;
+    timeInZone: number;
+    color: string;
+  }[];
+  distance?: number;
+  calories?: number;
+  pace?: string;
+}
+
+interface HIITIntervalTrackerProps {
+  sessionId: string;
+  title: string;
+  rounds: { current: number; total: number };
+  currentPhase: 'work' | 'rest' | 'prepare';
+  phaseTimeRemaining: number;
+  workDuration: number;
+  restDuration: number;
+  exercises: {
+    name: string;
+    completed: boolean;
+    current: boolean;
+  }[];
+  heartRateTarget?: number;
+  caloriesBurned?: number;
+}
+
+// LUNA - Hormonal/Cycle
+interface CycleTrackerProps {
+  currentDay: number;
+  cycleLength: number;
+  currentPhase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
+  phases: {
+    name: string;
+    days: string;
+    status: 'completed' | 'current' | 'upcoming';
+  }[];
+  nextPeriod: string;
+  fertileWindow?: string;
+  energyForecast: string;
+  notes?: string;
+}
+
+interface CycleAdjustmentProps {
+  phase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
+  dayRange: string;
+  hormoneProfile: {
+    estrogen: 'low' | 'rising' | 'peak' | 'falling';
+    progesterone: 'low' | 'rising' | 'peak' | 'falling';
+    energy: 'low' | 'moderate' | 'high' | 'variable';
+  };
+  trainingAdjustments: {
+    intensity: string;
+    volume: string;
+    focus: string[];
+    recovery: string;
+  };
+  nutritionAdjustments: {
+    calories: string;
+    carbs: string;
+    protein: string;
+    keyNutrients: string[];
+  };
+  selfCareRecommendations: string[];
+}
+
 type AgentMeta = {
   name: AgentType;
   color: string;
@@ -1879,6 +2023,703 @@ export const RecoveryScore: React.FC<{ data: RecoveryScoreProps; onAction?: (id:
   );
 };
 
+// --- PHASE 7: ADVANCED WIDGETS ---
+
+// STELLA - ProgressInsight
+export const ProgressInsight: React.FC<{ data: ProgressInsightProps; agent?: AgentType }> = ({ data, agent }) => {
+  const meta = getAgentMeta(agent, 'STELLA');
+
+  const trendIcons = {
+    positive: TrendingUp,
+    negative: TrendingDown,
+    neutral: Activity
+  };
+  const TrendIcon = trendIcons[data.trend];
+
+  const trendColors = {
+    positive: '#00FF88',
+    negative: '#FF4444',
+    neutral: '#FFB800'
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="STELLA">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-white">{data.title}</h3>
+        <div
+          className="px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1"
+          style={{ backgroundColor: `${trendColors[data.trend]}20`, color: trendColors[data.trend] }}
+        >
+          <TrendIcon size={12} />
+          {data.changeType === 'increase' ? '+' : data.changeType === 'decrease' ? '-' : ''}{Math.abs(data.change)}{data.unit}
+        </div>
+      </div>
+
+      <div className="flex items-end gap-4 mb-4">
+        <div>
+          <p className="text-3xl font-bold text-white">{data.currentValue}<span className="text-lg text-white/50">{data.unit}</span></p>
+          <p className="text-xs text-white/50">{data.metric}</p>
+        </div>
+        <div className="text-xs text-white/40">
+          <span>vs {data.previousValue}{data.unit} anterior</span>
+        </div>
+      </div>
+
+      {data.chartData && data.chartData.length > 0 && (
+        <div className="flex items-end gap-1 h-16 mb-4">
+          {data.chartData.map((point, idx) => (
+            <div key={idx} className="flex-1 flex flex-col items-center">
+              <div
+                className="w-full rounded-t transition-all"
+                style={{
+                  height: `${(point.value / Math.max(...data.chartData!.map(p => p.value))) * 100}%`,
+                  backgroundColor: idx === data.chartData!.length - 1 ? meta.color : `${meta.color}40`
+                }}
+              />
+              <span className="text-[8px] text-white/30 mt-1">{point.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="p-3 rounded-xl bg-white/5">
+        <div className="flex items-center gap-2 mb-1">
+          <Brain size={14} style={{ color: meta.color }} />
+          <span className="text-[10px] font-bold text-white/50 uppercase">Insight</span>
+        </div>
+        <p className="text-sm text-white/80">{data.insight}</p>
+        {data.recommendation && (
+          <p className="text-xs text-white/50 mt-2">💡 {data.recommendation}</p>
+        )}
+      </div>
+    </AgentCard>
+  );
+};
+
+// STELLA - WeeklySummary
+export const WeeklySummary: React.FC<{ data: WeeklySummaryProps; agent?: AgentType }> = ({ data, agent }) => {
+  const meta = getAgentMeta(agent, 'STELLA');
+
+  const trendIcons: Record<string, React.ReactNode> = {
+    up: <TrendingUp size={10} className="text-green-400" />,
+    down: <TrendingDown size={10} className="text-red-400" />,
+    stable: <Activity size={10} className="text-yellow-400" />
+  };
+
+  const scoreColor = data.overallScore >= 80 ? '#00FF88' : data.overallScore >= 60 ? '#FFB800' : '#FF4444';
+
+  return (
+    <AgentCard agent={agent} fallback="STELLA">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-white">Semana {data.weekNumber}</h3>
+          <p className="text-xs text-white/50">{data.dateRange}</p>
+        </div>
+        <div className="text-center">
+          <div
+            className="text-2xl font-bold"
+            style={{ color: scoreColor }}
+          >
+            {data.overallScore}
+          </div>
+          <p className="text-[10px] text-white/40">Score</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {data.highlights.map((h, idx) => (
+          <div key={idx} className="bg-white/5 p-2 rounded-lg">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-lg">{h.icon}</span>
+              {h.trend && trendIcons[h.trend]}
+            </div>
+            <p className="text-sm font-bold text-white">{h.value}</p>
+            <p className="text-[10px] text-white/50">{h.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {data.achievements.length > 0 && (
+        <div className="mb-3">
+          <p className="text-[10px] font-bold text-white/50 uppercase mb-2">🏆 Logros</p>
+          <div className="flex flex-wrap gap-1">
+            {data.achievements.map((a, idx) => (
+              <span key={idx} className="px-2 py-1 rounded-full text-[10px] bg-green-500/20 text-green-400">
+                {a}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.areasToImprove.length > 0 && (
+        <div className="mb-3">
+          <p className="text-[10px] font-bold text-white/50 uppercase mb-2">📈 A Mejorar</p>
+          <div className="flex flex-wrap gap-1">
+            {data.areasToImprove.map((a, idx) => (
+              <span key={idx} className="px-2 py-1 rounded-full text-[10px] bg-yellow-500/20 text-yellow-400">
+                {a}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="p-3 rounded-xl" style={{ backgroundColor: `${meta.color}15` }}>
+        <p className="text-[10px] font-bold text-white/50 uppercase mb-1">🎯 Foco próxima semana</p>
+        <p className="text-sm font-bold" style={{ color: meta.color }}>{data.nextWeekFocus}</p>
+      </div>
+    </AgentCard>
+  );
+};
+
+// STELLA - PRCelebration
+export const PRCelebration: React.FC<{ data: PRCelebrationProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
+  const [showConfetti, setShowConfetti] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowConfetti(false), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <AgentCard agent={agent} fallback="STELLA">
+      {showConfetti && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-bounce"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${1 + Math.random()}s`
+              }}
+            >
+              {['🎉', '🏆', '⭐', '💪', '🔥'][Math.floor(Math.random() * 5)]}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="text-center mb-4">
+        <div className="text-4xl mb-2">🏆</div>
+        <h3 className="text-xl font-bold text-white">¡NUEVO PR!</h3>
+        <p className="text-lg font-bold text-yellow-400">{data.exercise}</p>
+      </div>
+
+      <div className="flex justify-center gap-8 mb-4">
+        <div className="text-center">
+          <p className="text-xs text-white/50">Anterior</p>
+          <p className="text-lg text-white/60 line-through">{data.previousBest.weight}kg × {data.previousBest.reps}</p>
+          <p className="text-[10px] text-white/30">{data.previousBest.date}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-green-400">¡Nuevo!</p>
+          <p className="text-2xl font-bold text-green-400">{data.newRecord.weight}kg × {data.newRecord.reps}</p>
+        </div>
+      </div>
+
+      <div className="text-center mb-4">
+        <span className="px-4 py-2 rounded-full bg-green-500/20 text-green-400 font-bold">
+          +{data.improvement}{data.improvementType === 'weight' ? 'kg' : data.improvementType === 'reps' ? ' reps' : ' vol'}
+        </span>
+      </div>
+
+      <p className="text-center text-white/70 mb-4">{data.message}</p>
+
+      {data.rank && data.totalPRs && (
+        <p className="text-center text-xs text-white/40">
+          PR #{data.rank} de {data.totalPRs} este mes
+        </p>
+      )}
+
+      <ActionButton
+        label="🎉 Compartir"
+        onClick={() => onAction('share_pr', data)}
+        color="#A855F7"
+      />
+    </AgentCard>
+  );
+};
+
+// WAVE - HRVTrend
+export const HRVTrend: React.FC<{ data: HRVTrendProps; agent?: AgentType }> = ({ data, agent }) => {
+  const meta = getAgentMeta(agent, 'WAVE');
+
+  const trendColors = {
+    improving: '#00FF88',
+    declining: '#FF4444',
+    stable: '#FFB800'
+  };
+
+  const readinessColors = {
+    high: '#00FF88',
+    moderate: '#FFB800',
+    low: '#FF4444'
+  };
+
+  const maxHRV = Math.max(...data.history.map(h => h.value), data.baseline * 1.2);
+
+  return (
+    <AgentCard agent={agent} fallback="WAVE">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-white">HRV Trend</h3>
+          <p className="text-xs text-white/50 capitalize">{data.trend}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold" style={{ color: trendColors[data.trend] }}>{data.currentHRV}<span className="text-sm">ms</span></p>
+          <p className="text-[10px] text-white/40">Baseline: {data.baseline}ms</p>
+        </div>
+      </div>
+
+      <div className="h-20 flex items-end gap-1 mb-4 relative">
+        <div
+          className="absolute w-full border-t border-dashed border-white/20"
+          style={{ bottom: `${(data.baseline / maxHRV) * 100}%` }}
+        >
+          <span className="absolute right-0 text-[8px] text-white/30 -top-3">baseline</span>
+        </div>
+        {data.history.map((point, idx) => (
+          <div key={idx} className="flex-1 flex flex-col items-center">
+            <div
+              className="w-full rounded-t transition-all"
+              style={{
+                height: `${(point.value / maxHRV) * 100}%`,
+                backgroundColor: point.value >= data.baseline ? '#00FF88' : '#FF4444'
+              }}
+            />
+            <span className="text-[8px] text-white/30 mt-1">{point.date.slice(-2)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between mb-3 p-2 rounded-lg" style={{ backgroundColor: `${readinessColors[data.readiness]}15` }}>
+        <span className="text-xs text-white/70">Readiness</span>
+        <span className="text-sm font-bold capitalize" style={{ color: readinessColors[data.readiness] }}>
+          {data.readiness}
+        </span>
+      </div>
+
+      <div className="p-3 rounded-xl bg-white/5">
+        <p className="text-xs text-white/70 mb-2">{data.interpretation}</p>
+        <p className="text-sm font-bold" style={{ color: meta.color }}>{data.recommendation}</p>
+      </div>
+    </AgentCard>
+  );
+};
+
+// WAVE - DeloadSuggestion
+export const DeloadSuggestion: React.FC<{ data: DeloadSuggestionProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
+  const meta = getAgentMeta(agent, 'WAVE');
+
+  const statusColors = {
+    elevated: '#FF4444',
+    normal: '#00FF88',
+    low: '#FFB800'
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="WAVE">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 rounded-full bg-yellow-500/20">
+          <AlertTriangle size={20} className="text-yellow-400" />
+        </div>
+        <div>
+          <h3 className="font-bold text-white">Deload Sugerido</h3>
+          <p className="text-xs text-white/50">{data.duration}</p>
+        </div>
+      </div>
+
+      <p className="text-sm text-white/70 mb-4">{data.reason}</p>
+
+      <div className="space-y-2 mb-4">
+        {data.indicators.map((ind, idx) => (
+          <div key={idx} className="flex items-center justify-between bg-white/5 p-2 rounded-lg">
+            <span className="text-xs text-white/70">{ind.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/40">base: {ind.baseline}</span>
+              <span className="text-sm font-bold" style={{ color: statusColors[ind.status] }}>
+                {ind.current}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-white/5 p-3 rounded-lg text-center">
+          <p className="text-2xl font-bold text-yellow-400">-{data.volumeReduction}%</p>
+          <p className="text-[10px] text-white/50">Volumen</p>
+        </div>
+        <div className="bg-white/5 p-3 rounded-lg text-center">
+          <p className="text-2xl font-bold text-yellow-400">-{data.intensityReduction}%</p>
+          <p className="text-[10px] text-white/50">Intensidad</p>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <p className="text-[10px] font-bold text-white/50 uppercase mb-2">Focus areas</p>
+        <div className="flex flex-wrap gap-1">
+          {data.focusAreas.map((area, idx) => (
+            <span key={idx} className="px-2 py-1 rounded-full text-[10px]" style={{ backgroundColor: `${meta.color}20`, color: meta.color }}>
+              {area}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <ActionButton
+          label="Aceptar Deload"
+          onClick={() => onAction('accept_deload', data)}
+          color={meta.color}
+        />
+        <ActionButton
+          label="Ignorar"
+          onClick={() => onAction('skip_deload', data)}
+          color="#666"
+        />
+      </div>
+    </AgentCard>
+  );
+};
+
+// TEMPO - CardioSessionTracker
+export const CardioSessionTracker: React.FC<{ data: CardioSessionTrackerProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
+  const meta = getAgentMeta(agent, 'TEMPO');
+  const progress = (data.currentDuration / data.targetDuration) * 100;
+
+  const isInTargetZone = data.currentHeartRate
+    ? data.currentHeartRate >= data.targetHeartRate.min && data.currentHeartRate <= data.targetHeartRate.max
+    : true;
+
+  return (
+    <AgentCard agent={agent} fallback="TEMPO">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-white capitalize">{data.type.replace('-', ' ')}</h3>
+          <p className="text-xs text-white/50">Sesión activa</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-white">{Math.floor(data.currentDuration / 60)}:{(data.currentDuration % 60).toString().padStart(2, '0')}</p>
+          <p className="text-[10px] text-white/40">/ {Math.floor(data.targetDuration / 60)} min</p>
+        </div>
+      </div>
+
+      <ProgressBar progress={progress} color={meta.color} />
+
+      {data.currentHeartRate && (
+        <div className={`mt-4 p-3 rounded-xl flex items-center justify-between ${isInTargetZone ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+          <div className="flex items-center gap-2">
+            <Heart size={20} className={isInTargetZone ? 'text-green-400 animate-pulse' : 'text-red-400'} />
+            <span className="text-xs text-white/70">Heart Rate</span>
+          </div>
+          <div className="text-right">
+            <p className={`text-xl font-bold ${isInTargetZone ? 'text-green-400' : 'text-red-400'}`}>{data.currentHeartRate} <span className="text-sm">bpm</span></p>
+            <p className="text-[10px] text-white/40">Target: {data.targetHeartRate.min}-{data.targetHeartRate.max}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2">
+        <p className="text-[10px] font-bold text-white/50 uppercase">Zonas de HR</p>
+        {data.zones.map((zone, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zone.color }} />
+            <span className="text-xs text-white/70 flex-1">{zone.name} ({zone.range})</span>
+            <span className="text-xs font-bold text-white">{Math.floor(zone.timeInZone / 60)}:{(zone.timeInZone % 60).toString().padStart(2, '0')}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mt-4">
+        {data.distance && (
+          <div className="bg-white/5 p-2 rounded-lg text-center">
+            <p className="text-lg font-bold text-white">{data.distance.toFixed(1)}</p>
+            <p className="text-[10px] text-white/50">km</p>
+          </div>
+        )}
+        {data.calories && (
+          <div className="bg-white/5 p-2 rounded-lg text-center">
+            <p className="text-lg font-bold text-white">{data.calories}</p>
+            <p className="text-[10px] text-white/50">kcal</p>
+          </div>
+        )}
+        {data.pace && (
+          <div className="bg-white/5 p-2 rounded-lg text-center">
+            <p className="text-lg font-bold text-white">{data.pace}</p>
+            <p className="text-[10px] text-white/50">/km</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 mt-4">
+        <ActionButton label="⏸ Pausa" onClick={() => onAction('pause_cardio', { sessionId: data.sessionId })} color="#FFB800" />
+        <ActionButton label="✓ Finalizar" onClick={() => onAction('complete_cardio', { sessionId: data.sessionId })} color="#00FF88" />
+      </div>
+    </AgentCard>
+  );
+};
+
+// TEMPO - HIITIntervalTracker
+export const HIITIntervalTracker: React.FC<{ data: HIITIntervalTrackerProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
+  const meta = getAgentMeta(agent, 'TEMPO');
+
+  const phaseColors = {
+    work: '#FF4444',
+    rest: '#00FF88',
+    prepare: '#FFB800'
+  };
+
+  const phaseLabels = {
+    work: '🔥 WORK',
+    rest: '😮‍💨 REST',
+    prepare: '⏳ PREPARE'
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="TEMPO">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-bold text-white">{data.title}</h3>
+        <span className="text-sm font-bold" style={{ color: meta.color }}>
+          Round {data.rounds.current}/{data.rounds.total}
+        </span>
+      </div>
+
+      <div
+        className="text-center py-6 rounded-xl mb-4 transition-all"
+        style={{ backgroundColor: `${phaseColors[data.currentPhase]}20` }}
+      >
+        <p className="text-lg font-bold mb-2" style={{ color: phaseColors[data.currentPhase] }}>
+          {phaseLabels[data.currentPhase]}
+        </p>
+        <p className="text-5xl font-bold text-white">{data.phaseTimeRemaining}</p>
+        <p className="text-xs text-white/50 mt-2">segundos</p>
+      </div>
+
+      <div className="flex justify-center gap-4 mb-4 text-xs text-white/50">
+        <span>Work: {data.workDuration}s</span>
+        <span>|</span>
+        <span>Rest: {data.restDuration}s</span>
+      </div>
+
+      <div className="space-y-1 mb-4">
+        {data.exercises.map((ex, idx) => (
+          <div
+            key={idx}
+            className={`flex items-center gap-2 p-2 rounded-lg ${ex.current ? 'bg-white/10' : 'bg-transparent'}`}
+          >
+            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${ex.completed ? 'bg-green-500 border-green-500' : ex.current ? 'border-white' : 'border-white/30'}`}>
+              {ex.completed && <CheckCircle2 size={10} className="text-white" />}
+            </div>
+            <span className={`text-sm ${ex.completed ? 'text-white/50 line-through' : ex.current ? 'text-white font-bold' : 'text-white/70'}`}>
+              {ex.name}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {data.caloriesBurned && (
+        <div className="text-center text-sm text-white/50 mb-4">
+          🔥 {data.caloriesBurned} kcal quemadas
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <ActionButton label="⏸ Pausa" onClick={() => onAction('pause_hiit', { sessionId: data.sessionId })} color="#FFB800" />
+        <ActionButton label="⏭ Skip" onClick={() => onAction('skip_interval', { sessionId: data.sessionId })} color="#666" />
+      </div>
+    </AgentCard>
+  );
+};
+
+// LUNA - CycleTracker
+export const CycleTracker: React.FC<{ data: CycleTrackerProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
+  const meta = getAgentMeta(agent, 'LUNA');
+
+  const phaseColors: Record<string, string> = {
+    menstrual: '#FF6B6B',
+    follicular: '#4ECDC4',
+    ovulation: '#FFE66D',
+    luteal: '#A855F7'
+  };
+
+  const currentPhaseColor = phaseColors[data.currentPhase] || meta.color;
+
+  return (
+    <AgentCard agent={agent} fallback="LUNA">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-white">Cycle Tracker</h3>
+          <p className="text-xs text-white/50 capitalize">{data.currentPhase} Phase</p>
+        </div>
+        <div className="text-center">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: `${currentPhaseColor}30`, border: `2px solid ${currentPhaseColor}` }}
+          >
+            <span className="text-xl font-bold text-white">{data.currentDay}</span>
+          </div>
+          <p className="text-[10px] text-white/40 mt-1">Day</p>
+        </div>
+      </div>
+
+      <div className="flex gap-1 mb-4">
+        {data.phases.map((phase, idx) => (
+          <div
+            key={idx}
+            className={`flex-1 p-2 rounded-lg text-center ${phase.status === 'current' ? 'ring-2 ring-white/50' : ''}`}
+            style={{
+              backgroundColor: phase.status === 'completed'
+                ? `${phaseColors[phase.name.toLowerCase()] || meta.color}40`
+                : phase.status === 'current'
+                  ? `${phaseColors[phase.name.toLowerCase()] || meta.color}60`
+                  : 'rgba(255,255,255,0.05)'
+            }}
+          >
+            <p className="text-[10px] font-bold text-white/70">{phase.name.slice(0, 3)}</p>
+            <p className="text-[8px] text-white/40">{phase.days}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-white/5 p-3 rounded-lg">
+          <p className="text-[10px] text-white/50 mb-1">Próximo periodo</p>
+          <p className="text-sm font-bold text-white">{data.nextPeriod}</p>
+        </div>
+        {data.fertileWindow && (
+          <div className="bg-white/5 p-3 rounded-lg">
+            <p className="text-[10px] text-white/50 mb-1">Ventana fértil</p>
+            <p className="text-sm font-bold text-white">{data.fertileWindow}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="p-3 rounded-xl" style={{ backgroundColor: `${currentPhaseColor}15` }}>
+        <div className="flex items-center gap-2 mb-1">
+          <Zap size={14} style={{ color: currentPhaseColor }} />
+          <span className="text-[10px] font-bold text-white/50 uppercase">Energía</span>
+        </div>
+        <p className="text-sm font-bold" style={{ color: currentPhaseColor }}>{data.energyForecast}</p>
+      </div>
+
+      {data.notes && (
+        <p className="text-xs text-white/50 mt-3 italic">💡 {data.notes}</p>
+      )}
+
+      <ActionButton
+        label="📝 Log síntomas"
+        onClick={() => onAction('log_symptoms', { day: data.currentDay, phase: data.currentPhase })}
+        color={meta.color}
+        className="mt-4"
+      />
+    </AgentCard>
+  );
+};
+
+// LUNA - CycleAdjustment
+export const CycleAdjustment: React.FC<{ data: CycleAdjustmentProps; agent?: AgentType }> = ({ data, agent }) => {
+  const meta = getAgentMeta(agent, 'LUNA');
+
+  const phaseColors: Record<string, string> = {
+    menstrual: '#FF6B6B',
+    follicular: '#4ECDC4',
+    ovulation: '#FFE66D',
+    luteal: '#A855F7'
+  };
+
+  const currentPhaseColor = phaseColors[data.phase] || meta.color;
+
+  const hormoneIndicator = (level: string) => {
+    const icons: Record<string, string> = {
+      low: '▼',
+      rising: '↗',
+      peak: '▲',
+      falling: '↘'
+    };
+    return icons[level] || '●';
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="LUNA">
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="p-2 rounded-full"
+          style={{ backgroundColor: `${currentPhaseColor}30` }}
+        >
+          <Moon size={20} style={{ color: currentPhaseColor }} />
+        </div>
+        <div>
+          <h3 className="font-bold text-white capitalize">{data.phase} Phase</h3>
+          <p className="text-xs text-white/50">Días {data.dayRange}</p>
+        </div>
+      </div>
+
+      <div className="bg-white/5 p-3 rounded-xl mb-4">
+        <p className="text-[10px] font-bold text-white/50 uppercase mb-2">Perfil Hormonal</p>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center">
+            <p className="text-lg">{hormoneIndicator(data.hormoneProfile.estrogen)}</p>
+            <p className="text-[10px] text-white/50">Estrógeno</p>
+            <p className="text-xs text-white/70 capitalize">{data.hormoneProfile.estrogen}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg">{hormoneIndicator(data.hormoneProfile.progesterone)}</p>
+            <p className="text-[10px] text-white/50">Progesterona</p>
+            <p className="text-xs text-white/70 capitalize">{data.hormoneProfile.progesterone}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg">⚡</p>
+            <p className="text-[10px] text-white/50">Energía</p>
+            <p className="text-xs text-white/70 capitalize">{data.hormoneProfile.energy}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-white/5 p-3 rounded-xl">
+          <p className="text-[10px] font-bold text-white/50 uppercase mb-2">🏋️ Training</p>
+          <p className="text-xs text-white/70 mb-1"><strong>Intensidad:</strong> {data.trainingAdjustments.intensity}</p>
+          <p className="text-xs text-white/70 mb-1"><strong>Volumen:</strong> {data.trainingAdjustments.volume}</p>
+          <p className="text-xs text-white/70"><strong>Recovery:</strong> {data.trainingAdjustments.recovery}</p>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {data.trainingAdjustments.focus.map((f, idx) => (
+              <span key={idx} className="px-1 py-0.5 rounded text-[9px] bg-white/10 text-white/70">{f}</span>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white/5 p-3 rounded-xl">
+          <p className="text-[10px] font-bold text-white/50 uppercase mb-2">🥗 Nutrición</p>
+          <p className="text-xs text-white/70 mb-1"><strong>Calorías:</strong> {data.nutritionAdjustments.calories}</p>
+          <p className="text-xs text-white/70 mb-1"><strong>Carbs:</strong> {data.nutritionAdjustments.carbs}</p>
+          <p className="text-xs text-white/70"><strong>Proteína:</strong> {data.nutritionAdjustments.protein}</p>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {data.nutritionAdjustments.keyNutrients.map((n, idx) => (
+              <span key={idx} className="px-1 py-0.5 rounded text-[9px] bg-white/10 text-white/70">{n}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-3 rounded-xl" style={{ backgroundColor: `${currentPhaseColor}15` }}>
+        <p className="text-[10px] font-bold text-white/50 uppercase mb-2">🧘 Self-Care</p>
+        <ul className="space-y-1">
+          {data.selfCareRecommendations.map((rec, idx) => (
+            <li key={idx} className="text-xs text-white/70 flex items-start gap-2">
+              <span style={{ color: currentPhaseColor }}>•</span>
+              {rec}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </AgentCard>
+  );
+};
+
 export const AlertBanner: React.FC<{ data: AlertProps }> = ({ data }) => (
   <div className={`p-3 rounded-xl border flex items-center gap-3 mb-2 ${
     data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20'
@@ -1967,6 +2808,29 @@ export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction, a
       return <HydrationReminder data={payload.props} onAction={onAction} agent={agent} />;
     case 'recovery-score':
       return <RecoveryScore data={payload.props} agent={agent} />;
+    // Phase 7 - Advanced Widgets
+    // STELLA - Analytics
+    case 'progress-insight':
+      return <ProgressInsight data={payload.props} agent={agent} />;
+    case 'weekly-summary':
+      return <WeeklySummary data={payload.props} agent={agent} />;
+    case 'pr-celebration':
+      return <PRCelebration data={payload.props} agent={agent} />;
+    // WAVE - Recovery
+    case 'hrv-trend':
+      return <HRVTrend data={payload.props} agent={agent} />;
+    case 'deload-suggestion':
+      return <DeloadSuggestion data={payload.props} onAction={onAction} agent={agent} />;
+    // TEMPO - Cardio
+    case 'cardio-session-tracker':
+      return <CardioSessionTracker data={payload.props} onAction={onAction} agent={agent} />;
+    case 'hiit-interval-tracker':
+      return <HIITIntervalTracker data={payload.props} onAction={onAction} agent={agent} />;
+    // LUNA - Hormonal/Cycle
+    case 'cycle-tracker':
+      return <CycleTracker data={payload.props} agent={agent} />;
+    case 'cycle-adjustment':
+      return <CycleAdjustment data={payload.props} agent={agent} />;
     default:
       return null;
   }
