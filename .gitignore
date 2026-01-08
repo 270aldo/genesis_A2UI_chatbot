@@ -44,5 +44,9 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 
+# Supabase local config
+supabase/.temp/
+supabase/.branches/
+
 # Misc
 *.zip
