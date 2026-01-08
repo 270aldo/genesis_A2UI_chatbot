@@ -4,7 +4,22 @@ from pathlib import Path
 
 from google.adk.agents import Agent
 
-from agent.specialists import blaze, logos, sage, spark, stella
+from agent.specialists import (
+    # Original 5 agents
+    blaze,
+    logos,
+    sage,
+    spark,
+    stella,
+    # New 7 agents (Phase 4)
+    tempo,
+    atlas,
+    wave,
+    metabol,
+    macro,
+    nova,
+    luna,
+)
 from tools import generate_widget, get_user_context, update_user_context
 
 # Load instruction from file
@@ -21,7 +36,25 @@ genesis = Agent(
     ),
     instruction=GENESIS_INSTRUCTION,
     tools=[generate_widget, get_user_context, update_user_context],
-    sub_agents=[blaze, sage, spark, stella, logos],
+    sub_agents=[
+        # Strength & Training
+        blaze,      # Strength training
+        tempo,      # Cardio & HIIT
+        # Nutrition & Supplements
+        sage,       # Nutrition planning
+        macro,      # Nutrition tracking
+        nova,       # Supplements
+        metabol,    # Metabolic health
+        # Recovery & Health
+        wave,       # Recovery & HRV
+        atlas,      # Mobility & Pain
+        luna,       # Hormonal & Cycle
+        # Mindset & Habits
+        spark,      # Habits & Motivation
+        stella,     # Analytics & Mindset
+        # Education
+        logos,      # Education (TEXT_ONLY)
+    ],
 )
 
 # Export as root_agent for ADK

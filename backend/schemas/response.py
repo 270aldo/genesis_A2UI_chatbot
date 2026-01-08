@@ -34,10 +34,15 @@ class AgentResponse(BaseModel):
         examples=["¡BLAZE activado! Tu sesión de fuerza está lista."],
     )
     
-    agent: Literal["GENESIS", "BLAZE", "SAGE", "SPARK", "STELLA", "LOGOS"] = Field(
+    agent: Literal[
+        # Original 6 agents
+        "GENESIS", "BLAZE", "SAGE", "SPARK", "STELLA", "LOGOS",
+        # Phase 4 new agents
+        "TEMPO", "ATLAS", "WAVE", "METABOL", "MACRO", "NOVA", "LUNA"
+    ] = Field(
         ...,
         description="Agent that generated the response (UPPERCASE)",
-        examples=["BLAZE", "GENESIS"],
+        examples=["BLAZE", "GENESIS", "MACRO"],
     )
     
     payload: Optional[WidgetPayload] = Field(

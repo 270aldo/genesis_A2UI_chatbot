@@ -25,7 +25,7 @@ class Attachment(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request body for /api/chat endpoint."""
-    
+
     message: str = Field(
         ...,
         description="User message to process",
@@ -33,7 +33,7 @@ class ChatRequest(BaseModel):
         max_length=10000,
         examples=["¿Qué entreno hoy?", "Hola", "¿Por qué debo hacer deload?"],
     )
-    
+
     session_id: str = Field(
         default="default",
         description="Session ID for conversation continuity",
@@ -43,4 +43,42 @@ class ChatRequest(BaseModel):
     attachments: List[Attachment] = Field(
         default_factory=list,
         description="Optional attachments (base64)"
+    )
+
+
+# ============================================
+# TELEMETRY / EVENTS
+# ============================================
+
+class TelemetryEvent(BaseModel):
+    """Single telemetry event from frontend."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    event_id: str = Field(..., alias="eventId", description="Unique event ID (UUID)")
+    event_type: str = Field(..., alias="eventType", description="Event type")
+    category: str = Field(..., description="Event category (widget, session, user, etc.)")
+
+    user_id: str = Field(..., alias="userId", description="User ID")
+    session_id: Optional[str] = Field(None, alias="sessionId", description="Workout session ID")
+    widget_id: Optional[str] = Field(None, alias="widgetId", description="Widget ID")
+    agent_id: Optional[str] = Field(None, alias="agentId", description="Agent ID")
+
+    timestamp: str = Field(..., description="Server timestamp (ISO)")
+    client_timestamp: str = Field(..., alias="clientTimestamp", description="Client timestamp (ISO)")
+
+    platform: str = Field(default="web", description="Platform (web, ios, android)")
+    app_version: str = Field(default="1.0.0", alias="appVersion", description="App version")
+
+    properties: Optional[dict] = Field(default=None, description="Event-specific properties")
+
+
+class EventsRequest(BaseModel):
+    """Request body for /api/events endpoint (telemetry batch)."""
+
+    events: List[TelemetryEvent] = Field(
+        ...,
+        description="Batch of telemetry events",
+        min_length=1,
+        max_length=100,
     )

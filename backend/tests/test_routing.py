@@ -1,4 +1,8 @@
-"""Tests for agent routing logic."""
+"""Tests for agent routing logic.
+
+These tests require a real GOOGLE_API_KEY to run the ADK agents.
+Mark with @pytest.mark.integration to skip when no API key is available.
+"""
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -13,6 +17,7 @@ def anyio_backend():
 
 @pytest.fixture
 async def client():
+    """Basic client for non-integration tests."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -30,9 +35,10 @@ async def test_health_endpoint(client):
 
 
 @pytest.mark.anyio
-async def test_blaze_routing(client):
+@pytest.mark.integration
+async def test_blaze_routing(integration_client):
     """Test that training queries route to BLAZE."""
-    response = await client.post(
+    response = await integration_client.post(
         "/api/chat",
         json={"message": "¿Qué entreno hoy?", "session_id": "test-1"}
     )
@@ -42,21 +48,24 @@ async def test_blaze_routing(client):
     
 
 @pytest.mark.anyio
-async def test_sage_routing(client):
-    """Test that nutrition queries route to SAGE."""
-    response = await client.post(
+@pytest.mark.integration
+async def test_sage_routing(integration_client):
+    """Test that nutrition queries route to SAGE or MACRO."""
+    response = await integration_client.post(
         "/api/chat",
         json={"message": "¿Qué como después de entrenar?", "session_id": "test-2"}
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["agent"] in ["SAGE", "GENESIS"]
+    # MACRO is the new nutrition tracking agent, may route there
+    assert data["agent"] in ["SAGE", "MACRO", "GENESIS"]
 
 
 @pytest.mark.anyio
-async def test_spark_routing(client):
+@pytest.mark.integration
+async def test_spark_routing(integration_client):
     """Test that habit queries route to SPARK."""
-    response = await client.post(
+    response = await integration_client.post(
         "/api/chat",
         json={"message": "No puedo ser consistente", "session_id": "test-3"}
     )
@@ -66,9 +75,10 @@ async def test_spark_routing(client):
 
 
 @pytest.mark.anyio
-async def test_stella_routing(client):
+@pytest.mark.integration
+async def test_stella_routing(integration_client):
     """Test that progress queries route to STELLA."""
-    response = await client.post(
+    response = await integration_client.post(
         "/api/chat",
         json={"message": "¿Cómo voy con mis objetivos?", "session_id": "test-4"}
     )
@@ -78,9 +88,10 @@ async def test_stella_routing(client):
 
 
 @pytest.mark.anyio
-async def test_logos_routing(client):
+@pytest.mark.integration
+async def test_logos_routing(integration_client):
     """Test that 'why' queries route to LOGOS."""
-    response = await client.post(
+    response = await integration_client.post(
         "/api/chat",
         json={"message": "¿Por qué debo hacer deload?", "session_id": "test-5"}
     )
@@ -90,9 +101,10 @@ async def test_logos_routing(client):
 
 
 @pytest.mark.anyio
-async def test_genesis_greeting(client):
+@pytest.mark.integration
+async def test_genesis_greeting(integration_client):
     """Test that greetings are handled by GENESIS with quick-actions."""
-    response = await client.post(
+    response = await integration_client.post(
         "/api/chat",
         json={"message": "Hola", "session_id": "test-6"}
     )
