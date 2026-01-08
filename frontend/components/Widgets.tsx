@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Cpu, Zap, UtensilsCrossed, Droplets, AlertTriangle,
   Clock, Moon, CheckCircle2, Play, Pause, RotateCcw,
-  Pill, Flame, Activity,
-  TrendingUp, TrendingDown, Lightbulb, Brain
+  Pill, Flame, Activity, Heart, Waves, Dna, Apple,
+  TrendingUp, TrendingDown, Lightbulb, Brain, Target,
+  Sparkles, Timer, Trophy, PartyPopper, CircleDot,
+  Bone, ShieldAlert, Gauge, Calendar, Sun, Coffee
 } from 'lucide-react';
 import { GlassCard, AgentBadge, ProgressBar, ActionButton, GlassInput, GlassSlider } from './BaseUI';
 import { COLORS } from '../constants';
@@ -135,6 +137,132 @@ interface BreathworkProps {
   technique?: 'box' | '4-7-8' | 'calm';
 }
 
+// --- NEW WIDGET TYPES (Phase 5 - Happy Path) ---
+
+interface MorningCheckinProps {
+  date: string;
+  greeting: string;
+  questions: {
+    id: string;
+    label: string;
+    type: 'slider' | 'select' | 'text';
+    options?: string[];
+    min?: number;
+    max?: number;
+  }[];
+}
+
+interface DailyBriefingProps {
+  greeting: string;
+  date: string;
+  summary: string;
+  items: {
+    icon: string;
+    label: string;
+    value: string;
+    status?: 'good' | 'warning' | 'neutral';
+  }[];
+  todaysFocus?: string;
+}
+
+interface RestTimerProps {
+  seconds: number;
+  exerciseName?: string;
+  nextExercise?: string;
+  autoStart?: boolean;
+}
+
+interface WorkoutCompleteProps {
+  workoutId: string;
+  title: string;
+  duration: number;
+  totalVolume: number;
+  exercisesCompleted: number;
+  prsHit?: number;
+  calories?: number;
+  message: string;
+}
+
+interface PainReportInlineProps {
+  reportId?: string;
+  bodyZone?: string;
+  painLevel?: number;
+  painType?: string;
+  triggers?: string[];
+  duration?: string;
+  recommendation?: string;
+}
+
+interface SafeVariantProps {
+  originalExercise: string;
+  issue: string;
+  variants: {
+    name: string;
+    reason: string;
+    safetyLevel: 'green' | 'yellow' | 'red';
+  }[];
+  avoidCompletely?: string[];
+}
+
+interface PreWorkoutFuelProps {
+  timeToWorkout: number;
+  workoutType: string;
+  workoutIntensity: 'low' | 'moderate' | 'high';
+  recommendation: {
+    timing: string;
+    carbs: string;
+    protein: string;
+    fat: string;
+    hydration: string;
+  };
+  mealSuggestions: {
+    name: string;
+    carbs: number;
+    protein: number;
+  }[];
+  avoid?: string[];
+}
+
+interface PostWorkoutWindowProps {
+  windowStatus: 'open' | 'closing' | 'closed';
+  minutesSinceWorkout: number;
+  optimalWindow: number;
+  priority: {
+    protein: { amount: string; reason: string };
+    carbs: { amount: string; reason: string };
+    hydration: { amount: string; reason: string };
+  };
+  suggestions: {
+    name: string;
+    protein: number;
+    carbs: number;
+  }[];
+  urgency?: string;
+}
+
+interface HydrationReminderProps {
+  targetLiters: number;
+  consumed: number;
+  remaining: number;
+  glasses: { consumed: number; target: number };
+  lastDrink?: string;
+  reminder?: string;
+  tips?: string[];
+}
+
+interface RecoveryScoreProps {
+  score: number;
+  status: 'excellent' | 'good' | 'moderate' | 'low';
+  factors: {
+    name: string;
+    value: number;
+    unit?: string;
+    status: 'good' | 'below_baseline' | 'above_baseline' | 'elevated' | 'low';
+  }[];
+  recommendation: string;
+  suggestedIntensity: 'high' | 'medium' | 'low' | 'rest';
+}
+
 type AgentMeta = {
   name: AgentType;
   color: string;
@@ -145,6 +273,7 @@ const getAgentMeta = (agent?: AgentType, fallback: AgentType = 'GENESIS'): Agent
   const resolved = (agent || fallback).toUpperCase();
 
   switch (resolved) {
+    // Original 5 agents
     case 'BLAZE':
       return { name: 'BLAZE', color: COLORS.blaze, icon: Zap };
     case 'SAGE':
@@ -155,6 +284,21 @@ const getAgentMeta = (agent?: AgentType, fallback: AgentType = 'GENESIS'): Agent
       return { name: 'STELLA', color: COLORS.stella, icon: Brain };
     case 'LOGOS':
       return { name: 'LOGOS', color: COLORS.logos, icon: Lightbulb };
+    // New 7 agents (Phase 4)
+    case 'TEMPO':
+      return { name: 'TEMPO', color: COLORS.tempo, icon: Heart };
+    case 'ATLAS':
+      return { name: 'ATLAS', color: COLORS.atlas, icon: Bone };
+    case 'WAVE':
+      return { name: 'WAVE', color: COLORS.wave, icon: Waves };
+    case 'METABOL':
+      return { name: 'METABOL', color: COLORS.metabol, icon: Dna };
+    case 'MACRO':
+      return { name: 'MACRO', color: COLORS.macro, icon: Apple };
+    case 'NOVA':
+      return { name: 'NOVA', color: COLORS.nova, icon: Sparkles };
+    case 'LUNA':
+      return { name: 'LUNA', color: COLORS.luna, icon: Moon };
     default:
       return { name: 'GENESIS', color: COLORS.genesis, icon: Cpu };
   }
@@ -1043,15 +1187,707 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentTyp
   );
 };
 
+// ============================================
+// PHASE 5 - HAPPY PATH WIDGETS
+// ============================================
+
+// 19. Morning Check-in (SPARK)
+export const MorningCheckin: React.FC<{ data: MorningCheckinProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const [answers, setAnswers] = useState<Record<string, string | number>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const meta = getAgentMeta(agent, 'SPARK');
+
+  const handleChange = (id: string, value: string | number) => {
+    setAnswers(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    onAction('SUBMIT_MORNING_CHECKIN', { date: data.date, answers });
+  };
+
+  if (submitted) {
+    return (
+      <AgentCard agent={agent} fallback="SPARK">
+        <div className="text-center py-6">
+          <Sun size={48} className="mx-auto mb-3" style={{ color: meta.color }} />
+          <h3 className="text-lg font-bold text-white mb-1">¡Buenos días!</h3>
+          <p className="text-sm text-white/60">Check-in registrado. GENESIS está preparando tu día.</p>
+        </div>
+      </AgentCard>
+    );
+  }
+
+  return (
+    <AgentCard agent={agent} fallback="SPARK">
+      <div className="flex items-center gap-3 mb-4">
+        <Sun size={24} style={{ color: meta.color }} />
+        <div>
+          <h3 className="font-bold text-white">{data.greeting}</h3>
+          <p className="text-[10px] text-white/40">{data.date}</p>
+        </div>
+      </div>
+
+      <div className="space-y-4 mb-6">
+        {data.questions.map((q) => (
+          <div key={q.id}>
+            <p className="text-xs text-white/80 mb-2">{q.label}</p>
+            {q.type === 'slider' ? (
+              <GlassSlider
+                min={q.min || 1}
+                max={q.max || 10}
+                value={Number(answers[q.id] || q.min || 1)}
+                onChange={(val) => handleChange(q.id, val)}
+              />
+            ) : q.type === 'select' && q.options ? (
+              <div className="flex flex-wrap gap-2">
+                {q.options.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => handleChange(q.id, opt)}
+                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${
+                      answers[q.id] === opt
+                        ? 'text-black font-bold'
+                        : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }`}
+                    style={answers[q.id] === opt ? { backgroundColor: meta.color } : {}}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <GlassInput
+                type="text"
+                placeholder="..."
+                onChange={(e) => handleChange(q.id, e.target.value)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <ActionButton onClick={handleSubmit} color={meta.color}>
+        Comenzar el Día
+      </ActionButton>
+    </AgentCard>
+  );
+};
+
+// 20. Daily Briefing (GENESIS)
+export const DailyBriefing: React.FC<{ data: DailyBriefingProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'GENESIS');
+
+  const iconMap: Record<string, any> = {
+    workout: Zap,
+    nutrition: UtensilsCrossed,
+    sleep: Moon,
+    recovery: Waves,
+    hydration: Droplets,
+    streak: Flame,
+    focus: Target,
+    default: Activity
+  };
+
+  const statusColors = {
+    good: '#00FF88',
+    warning: '#FFB800',
+    neutral: 'rgba(255,255,255,0.5)'
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="GENESIS">
+      <div className="mb-4">
+        <h3 className="text-lg font-bold text-white">{data.greeting}</h3>
+        <p className="text-[10px] text-white/40">{data.date}</p>
+      </div>
+
+      <p className="text-sm text-white/80 mb-4 leading-relaxed">{data.summary}</p>
+
+      <div className="space-y-2 mb-4">
+        {data.items.map((item, idx) => {
+          const Icon = iconMap[item.icon] || iconMap.default;
+          const statusColor = statusColors[item.status || 'neutral'];
+          return (
+            <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Icon size={16} style={{ color: statusColor }} />
+                <span className="text-xs text-white/70">{item.label}</span>
+              </div>
+              <span className="text-xs font-bold" style={{ color: statusColor }}>{item.value}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {data.todaysFocus && (
+        <div className="p-3 rounded-xl border" style={{ backgroundColor: `${meta.color}15`, borderColor: `${meta.color}30` }}>
+          <div className="flex items-center gap-2 mb-1">
+            <Target size={14} style={{ color: meta.color }} />
+            <span className="text-[10px] font-bold text-white/50 uppercase">Enfoque del Día</span>
+          </div>
+          <p className="text-sm text-white font-medium">{data.todaysFocus}</p>
+        </div>
+      )}
+    </AgentCard>
+  );
+};
+
+// 21. Rest Timer (BLAZE) - Floating compact timer
+export const RestTimer: React.FC<{ data: RestTimerProps; onAction?: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const [timeLeft, setTimeLeft] = useState(data.seconds);
+  const [isActive, setIsActive] = useState(data.autoStart ?? true);
+  const meta = getAgentMeta(agent, 'BLAZE');
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+    } else if (timeLeft === 0) {
+      setIsActive(false);
+      onAction?.('REST_COMPLETE', { exerciseName: data.exerciseName });
+    }
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, onAction, data.exerciseName]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const progress = ((data.seconds - timeLeft) / data.seconds) * 100;
+
+  return (
+    <div
+      className="fixed bottom-24 right-4 z-50 p-4 rounded-2xl backdrop-blur-xl border shadow-2xl"
+      style={{
+        backgroundColor: 'rgba(0,0,0,0.9)',
+        borderColor: `${meta.color}40`,
+        boxShadow: `0 0 30px ${meta.color}20`
+      }}
+    >
+      <div className="flex items-center gap-4">
+        <div className="relative w-16 h-16">
+          <svg className="w-full h-full -rotate-90">
+            <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
+            <circle
+              cx="32" cy="32" r="28"
+              stroke={meta.color}
+              strokeWidth="4"
+              fill="none"
+              strokeDasharray={175}
+              strokeDashoffset={175 - (175 * progress) / 100}
+              className="transition-all duration-1000"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-lg font-mono font-bold text-white">{formatTime(timeLeft)}</span>
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <p className="text-[10px] text-white/50 uppercase">Descanso</p>
+          {data.nextExercise && (
+            <p className="text-xs text-white/80">Siguiente: <span className="font-bold">{data.nextExercise}</span></p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsActive(!isActive)}
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: meta.color }}
+          >
+            {isActive ? <Pause size={16} className="text-black" /> : <Play size={16} className="text-black ml-0.5" />}
+          </button>
+          <button
+            onClick={() => { setTimeLeft(data.seconds); setIsActive(true); }}
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
+          >
+            <RotateCcw size={16} className="text-white" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 22. Workout Complete (BLAZE) - Celebration with stats
+export const WorkoutComplete: React.FC<{ data: WorkoutCompleteProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const [showConfetti, setShowConfetti] = useState(true);
+  const meta = getAgentMeta(agent, 'BLAZE');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowConfetti(false), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const formatDuration = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m} min`;
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="BLAZE">
+      {/* Confetti effect (CSS-based) */}
+      {showConfetti && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 animate-bounce"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `-${Math.random() * 20}px`,
+                backgroundColor: ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181'][i % 5],
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="text-center py-4 relative z-10">
+        <div className="mb-4">
+          <Trophy size={56} className="mx-auto mb-2" style={{ color: meta.color }} />
+          <h2 className="text-2xl font-bold text-white mb-1">¡Completado!</h2>
+          <p className="text-sm text-white/60">{data.title}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-white/5 p-3 rounded-xl">
+            <Clock size={16} className="mx-auto mb-1 text-white/40" />
+            <p className="text-lg font-bold text-white">{formatDuration(data.duration)}</p>
+            <p className="text-[10px] text-white/40">Duración</p>
+          </div>
+          <div className="bg-white/5 p-3 rounded-xl">
+            <Zap size={16} className="mx-auto mb-1 text-white/40" />
+            <p className="text-lg font-bold text-white">{data.totalVolume.toLocaleString()}</p>
+            <p className="text-[10px] text-white/40">Volumen (kg)</p>
+          </div>
+          <div className="bg-white/5 p-3 rounded-xl">
+            <CheckCircle2 size={16} className="mx-auto mb-1 text-white/40" />
+            <p className="text-lg font-bold text-white">{data.exercisesCompleted}</p>
+            <p className="text-[10px] text-white/40">Ejercicios</p>
+          </div>
+          {data.prsHit && data.prsHit > 0 && (
+            <div className="bg-white/5 p-3 rounded-xl" style={{ backgroundColor: `${meta.color}20` }}>
+              <PartyPopper size={16} className="mx-auto mb-1" style={{ color: meta.color }} />
+              <p className="text-lg font-bold" style={{ color: meta.color }}>{data.prsHit}</p>
+              <p className="text-[10px] text-white/40">PRs Nuevos</p>
+            </div>
+          )}
+        </div>
+
+        <p className="text-sm text-white/80 italic mb-4">"{data.message}"</p>
+
+        <ActionButton color={meta.color} onClick={() => onAction('SHARE_WORKOUT', { workoutId: data.workoutId })}>
+          Compartir Logro
+        </ActionButton>
+      </div>
+    </AgentCard>
+  );
+};
+
+// 23. Pain Report Inline (ATLAS)
+export const PainReportInline: React.FC<{ data: PainReportInlineProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const [painLevel, setPainLevel] = useState(data.painLevel || 5);
+  const [bodyZone, setBodyZone] = useState(data.bodyZone || '');
+  const [submitted, setSubmitted] = useState(false);
+  const meta = getAgentMeta(agent, 'ATLAS');
+
+  const zones = ['lower_back', 'upper_back', 'shoulders', 'knees', 'hips', 'neck', 'wrists', 'elbows'];
+  const zoneLabels: Record<string, string> = {
+    lower_back: 'Espalda Baja',
+    upper_back: 'Espalda Alta',
+    shoulders: 'Hombros',
+    knees: 'Rodillas',
+    hips: 'Caderas',
+    neck: 'Cuello',
+    wrists: 'Muñecas',
+    elbows: 'Codos'
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    onAction('REPORT_PAIN', {
+      reportId: data.reportId || `pain-${Date.now()}`,
+      bodyZone,
+      painLevel,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  if (submitted) {
+    return (
+      <AgentCard agent={agent} fallback="ATLAS">
+        <div className="flex items-center gap-3">
+          <ShieldAlert size={24} style={{ color: meta.color }} />
+          <div>
+            <p className="text-sm font-bold text-white">Dolor registrado</p>
+            <p className="text-xs text-white/60">ATLAS está analizando alternativas seguras...</p>
+          </div>
+        </div>
+      </AgentCard>
+    );
+  }
+
+  return (
+    <AgentCard agent={agent} fallback="ATLAS">
+      <div className="flex items-center gap-2 mb-4">
+        <ShieldAlert size={20} style={{ color: meta.color }} />
+        <h3 className="font-bold text-white text-sm">¿Sientes molestia?</h3>
+      </div>
+
+      <div className="mb-4">
+        <p className="text-xs text-white/60 mb-2">Zona afectada</p>
+        <div className="flex flex-wrap gap-2">
+          {zones.map((zone) => (
+            <button
+              key={zone}
+              onClick={() => setBodyZone(zone)}
+              className={`px-3 py-1.5 rounded-full text-xs transition-all ${
+                bodyZone === zone
+                  ? 'text-black font-bold'
+                  : 'bg-white/5 text-white/70 hover:bg-white/10'
+              }`}
+              style={bodyZone === zone ? { backgroundColor: meta.color } : {}}
+            >
+              {zoneLabels[zone]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <p className="text-xs text-white/60">Nivel de dolor</p>
+          <span className="text-sm font-bold" style={{ color: painLevel > 6 ? '#FF4444' : painLevel > 3 ? '#FFB800' : meta.color }}>
+            {painLevel}/10
+          </span>
+        </div>
+        <GlassSlider min={1} max={10} value={painLevel} onChange={setPainLevel} />
+      </div>
+
+      {data.recommendation && (
+        <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10">
+          <p className="text-xs text-white/80">{data.recommendation}</p>
+        </div>
+      )}
+
+      <ActionButton color={meta.color} onClick={handleSubmit} disabled={!bodyZone}>
+        Reportar y Ver Alternativas
+      </ActionButton>
+    </AgentCard>
+  );
+};
+
+// 24. Safe Variant (ATLAS)
+export const SafeVariant: React.FC<{ data: SafeVariantProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'ATLAS');
+
+  const safetyColors = {
+    green: '#00FF88',
+    yellow: '#FFB800',
+    red: '#FF4444'
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="ATLAS">
+      <div className="mb-4">
+        <p className="text-[10px] text-white/40 uppercase mb-1">Alternativas seguras para</p>
+        <h3 className="text-lg font-bold text-white">{data.originalExercise}</h3>
+        <p className="text-xs text-white/50">Debido a: {data.issue.replace(/_/g, ' ')}</p>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        {data.variants.map((variant, idx) => (
+          <button
+            key={idx}
+            onClick={() => onAction('SELECT_VARIANT', { original: data.originalExercise, selected: variant.name })}
+            className="w-full p-3 rounded-xl bg-white/5 border text-left transition-all hover:bg-white/10"
+            style={{ borderColor: `${safetyColors[variant.safetyLevel]}40` }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-bold text-white">{variant.name}</span>
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: safetyColors[variant.safetyLevel] }}
+              />
+            </div>
+            <p className="text-xs text-white/60">{variant.reason}</p>
+          </button>
+        ))}
+      </div>
+
+      {data.avoidCompletely && data.avoidCompletely.length > 0 && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-[10px] text-red-400 font-bold uppercase mb-1">Evitar hoy</p>
+          <p className="text-xs text-white/70">{data.avoidCompletely.join(', ')}</p>
+        </div>
+      )}
+    </AgentCard>
+  );
+};
+
+// 25. Pre-Workout Fuel (MACRO)
+export const PreWorkoutFuel: React.FC<{ data: PreWorkoutFuelProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'MACRO');
+
+  return (
+    <AgentCard agent={agent} fallback="MACRO">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Coffee size={20} style={{ color: meta.color }} />
+          <h3 className="font-bold text-white">Pre-Entreno</h3>
+        </div>
+        <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-white/70">
+          {data.timeToWorkout} min para entrenar
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40">Carbs</p>
+          <p className="text-sm font-bold text-white">{data.recommendation.carbs}</p>
+        </div>
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40">Proteína</p>
+          <p className="text-sm font-bold text-white">{data.recommendation.protein}</p>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-white/50 uppercase mb-2">Opciones rápidas</p>
+      <div className="space-y-2 mb-4">
+        {data.mealSuggestions.slice(0, 3).map((meal, idx) => (
+          <button
+            key={idx}
+            onClick={() => onAction('LOG_PRE_WORKOUT', { meal: meal.name })}
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left"
+          >
+            <span className="text-sm text-white">{meal.name}</span>
+            <span className="text-xs text-white/40">{meal.carbs}c / {meal.protein}p</span>
+          </button>
+        ))}
+      </div>
+
+      {data.avoid && data.avoid.length > 0 && (
+        <p className="text-[10px] text-white/40 text-center">
+          Evitar: {data.avoid.join(', ')}
+        </p>
+      )}
+    </AgentCard>
+  );
+};
+
+// 26. Post-Workout Window (MACRO)
+export const PostWorkoutWindow: React.FC<{ data: PostWorkoutWindowProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'MACRO');
+  const remainingTime = data.optimalWindow - data.minutesSinceWorkout;
+  const urgencyLevel = remainingTime < 15 ? 'high' : remainingTime < 30 ? 'medium' : 'low';
+
+  const urgencyColors = {
+    high: '#FF4444',
+    medium: '#FFB800',
+    low: meta.color
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="MACRO">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Timer size={20} style={{ color: urgencyColors[urgencyLevel] }} />
+          <h3 className="font-bold text-white">Ventana Anabólica</h3>
+        </div>
+        <span
+          className="text-xs px-2 py-1 rounded-full font-bold animate-pulse"
+          style={{ backgroundColor: `${urgencyColors[urgencyLevel]}20`, color: urgencyColors[urgencyLevel] }}
+        >
+          {remainingTime > 0 ? `${remainingTime} min restantes` : 'Cerrada'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40">Proteína</p>
+          <p className="text-xs font-bold text-white">{data.priority.protein.amount}</p>
+        </div>
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40">Carbs</p>
+          <p className="text-xs font-bold text-white">{data.priority.carbs.amount}</p>
+        </div>
+        <div className="bg-white/5 p-2 rounded-lg text-center">
+          <p className="text-[10px] text-white/40">Agua</p>
+          <p className="text-xs font-bold text-white">{data.priority.hydration.amount}</p>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-white/50 uppercase mb-2">Opciones post-entreno</p>
+      <div className="space-y-2 mb-4">
+        {data.suggestions.slice(0, 3).map((meal, idx) => (
+          <button
+            key={idx}
+            onClick={() => onAction('LOG_POST_WORKOUT', { meal: meal.name })}
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left"
+          >
+            <span className="text-sm text-white">{meal.name}</span>
+            <span className="text-xs text-white/40">{meal.protein}p / {meal.carbs}c</span>
+          </button>
+        ))}
+      </div>
+
+      {data.urgency && (
+        <p className="text-xs text-center font-bold" style={{ color: urgencyColors[urgencyLevel] }}>
+          {data.urgency}
+        </p>
+      )}
+    </AgentCard>
+  );
+};
+
+// 27. Hydration Reminder (MACRO) - Floating widget
+export const HydrationReminder: React.FC<{ data: HydrationReminderProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'MACRO');
+  const progress = (data.consumed / data.targetLiters) * 100;
+
+  return (
+    <div
+      className="fixed bottom-24 left-4 z-50 p-4 rounded-2xl backdrop-blur-xl border shadow-2xl max-w-[200px]"
+      style={{
+        backgroundColor: 'rgba(0,0,0,0.9)',
+        borderColor: `${meta.color}40`,
+        boxShadow: `0 0 30px ${meta.color}20`
+      }}
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <Droplets size={20} style={{ color: meta.color }} />
+        <div>
+          <p className="text-xs font-bold text-white">{data.consumed.toFixed(1)}L / {data.targetLiters}L</p>
+          <p className="text-[10px] text-white/40">{data.glasses.consumed} vasos</p>
+        </div>
+      </div>
+
+      <div className="h-2 bg-white/10 rounded-full mb-3">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: meta.color }}
+        />
+      </div>
+
+      {data.reminder && (
+        <p className="text-[10px] text-white/60 mb-3">{data.reminder}</p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => onAction('ADD_WATER', { amount: 250 })}
+          className="flex-1 py-2 rounded-lg bg-white/10 text-xs text-white hover:bg-white/20 transition-all"
+        >
+          +250ml
+        </button>
+        <button
+          onClick={() => onAction('ADD_WATER', { amount: 500 })}
+          className="flex-1 py-2 rounded-lg text-xs text-black font-bold transition-all"
+          style={{ backgroundColor: meta.color }}
+        >
+          +500ml
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 28. Recovery Score (WAVE)
+export const RecoveryScore: React.FC<{ data: RecoveryScoreProps; onAction?: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
+  const meta = getAgentMeta(agent, 'WAVE');
+
+  const statusColors = {
+    excellent: '#00FF88',
+    good: '#22C55E',
+    moderate: '#FFB800',
+    low: '#FF4444'
+  };
+
+  const factorStatusColors: Record<string, string> = {
+    good: '#00FF88',
+    below_baseline: '#FFB800',
+    above_baseline: '#FFB800',
+    elevated: '#FF4444',
+    low: '#0EA5E9'
+  };
+
+  const intensityLabels = {
+    high: 'Alta intensidad OK',
+    medium: 'Intensidad moderada',
+    low: 'Baja intensidad',
+    rest: 'Día de descanso'
+  };
+
+  return (
+    <AgentCard agent={agent} fallback="WAVE">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-white">Recovery Score</h3>
+          <p className="text-xs text-white/50 capitalize">{data.status}</p>
+        </div>
+        <div className="relative w-20 h-20">
+          <svg className="w-full h-full -rotate-90">
+            <circle cx="40" cy="40" r="35" stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="none" />
+            <circle
+              cx="40" cy="40" r="35"
+              stroke={statusColors[data.status]}
+              strokeWidth="6"
+              fill="none"
+              strokeDasharray={220}
+              strokeDashoffset={220 - (220 * data.score) / 100}
+              className="transition-all duration-1000"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-2xl font-bold text-white">{data.score}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        {data.factors.map((factor, idx) => (
+          <div key={idx} className="flex items-center justify-between bg-white/5 p-2 rounded-lg">
+            <span className="text-xs text-white/70">{factor.name}</span>
+            <span
+              className="text-xs font-bold"
+              style={{ color: factorStatusColors[factor.status] || meta.color }}
+            >
+              {factor.value}{factor.unit ? ` ${factor.unit}` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-3 rounded-xl" style={{ backgroundColor: `${statusColors[data.status]}15` }}>
+        <div className="flex items-center gap-2 mb-1">
+          <Gauge size={14} style={{ color: statusColors[data.status] }} />
+          <span className="text-[10px] font-bold text-white/50 uppercase">Recomendación</span>
+        </div>
+        <p className="text-sm font-bold" style={{ color: statusColors[data.status] }}>
+          {intensityLabels[data.suggestedIntensity]}
+        </p>
+        <p className="text-xs text-white/60 mt-1">{data.recommendation}</p>
+      </div>
+    </AgentCard>
+  );
+};
+
 export const AlertBanner: React.FC<{ data: AlertProps }> = ({ data }) => (
   <div className={`p-3 rounded-xl border flex items-center gap-3 mb-2 ${
-    data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20' 
-    : data.type === 'error' ? 'bg-[#FF4444]/10 border-[#FF4444]/20' 
+    data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20'
+    : data.type === 'error' ? 'bg-[#FF4444]/10 border-[#FF4444]/20'
     : 'bg-[#00FF88]/10 border-[#00FF88]/20'
   }`}>
     <AlertTriangle size={18} className={
-      data.type === 'warning' ? 'text-[#FFB800]' 
-      : data.type === 'error' ? 'text-[#FF4444]' 
+      data.type === 'warning' ? 'text-[#FFB800]'
+      : data.type === 'error' ? 'text-[#FF4444]'
       : 'text-[#00FF88]'
     } />
     <p className="text-xs text-white/80 flex-1">{data.message}</p>
@@ -1110,6 +1946,27 @@ export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction, a
       return <BreathworkGuide data={payload.props} agent={agent} />;
     case 'alert-banner':
       return <AlertBanner data={payload.props} />;
+    // Phase 5 - Happy Path Widgets
+    case 'morning-checkin':
+      return <MorningCheckin data={payload.props} onAction={onAction} agent={agent} />;
+    case 'daily-briefing':
+      return <DailyBriefing data={payload.props} agent={agent} />;
+    case 'rest-timer':
+      return <RestTimer data={payload.props} agent={agent} />;
+    case 'workout-complete':
+      return <WorkoutComplete data={payload.props} onAction={onAction} agent={agent} />;
+    case 'pain-report-inline':
+      return <PainReportInline data={payload.props} onAction={onAction} agent={agent} />;
+    case 'safe-variant':
+      return <SafeVariant data={payload.props} onAction={onAction} agent={agent} />;
+    case 'pre-workout-fuel':
+      return <PreWorkoutFuel data={payload.props} agent={agent} />;
+    case 'post-workout-window':
+      return <PostWorkoutWindow data={payload.props} onAction={onAction} agent={agent} />;
+    case 'hydration-reminder':
+      return <HydrationReminder data={payload.props} onAction={onAction} agent={agent} />;
+    case 'recovery-score':
+      return <RecoveryScore data={payload.props} agent={agent} />;
     default:
       return null;
   }
