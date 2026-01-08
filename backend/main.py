@@ -19,7 +19,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from agent import root_agent
-from schemas.request import ChatRequest
+from schemas.request import ChatRequest, EventsRequest
 from schemas.response import AgentResponse
 
 MAX_ATTACHMENTS = 4
@@ -197,6 +197,53 @@ async def chat(request: ChatRequest):
         
     except Exception as e:
         logger.error(f"Chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/events")
+async def receive_events(request: EventsRequest):
+    """
+    Telemetry endpoint for frontend events.
+
+    Receives batched events from TelemetryService and:
+    1. Logs them for debugging
+    2. Optionally forwards to Supabase (when configured)
+
+    Events include:
+    - widget_* - Widget lifecycle (shown, dismissed, completed, etc.)
+    - session_* - Workout session events
+    - user_* - User actions (check-ins, logging)
+    - navigation_* - Screen views
+    - ai_* - Agent interactions
+    - error - Error tracking
+    - performance - Performance metrics
+    """
+    try:
+        event_count = len(request.events)
+        logger.info(f"Received {event_count} telemetry events")
+
+        # Log event summary for debugging
+        categories = {}
+        for event in request.events:
+            cat = event.category
+            categories[cat] = categories.get(cat, 0) + 1
+
+        logger.debug(f"Event categories: {categories}")
+
+        # TODO: Forward to Supabase when configured
+        # supabase_url = os.getenv("SUPABASE_URL")
+        # supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+        # if supabase_url and supabase_key:
+        #     await forward_to_supabase(request.events)
+
+        return {
+            "status": "ok",
+            "received": event_count,
+            "categories": categories,
+        }
+
+    except Exception as e:
+        logger.error(f"Events error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
