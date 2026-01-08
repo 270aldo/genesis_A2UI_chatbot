@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
   Cpu, MoreVertical, Plus, Mic, Send, Bot, X, Image as ImageIcon, Menu
 } from 'lucide-react';
 import { Message, Attachment, Session } from './types';
@@ -7,6 +7,12 @@ import { COLORS, getAgentColor } from './constants';
 import { A2UIMediator } from './components/Widgets';
 import { generateContent, API_URL } from './services/api';
 import { Sidebar } from './components/Sidebar';
+import { v4 as uuid } from 'uuid';
+
+// Widget Queue & Telemetry
+import { useAttentionBudget, type QueueWidgetPayload } from './src/hooks';
+import { useTelemetry, eventBus } from './src/services/events';
+import type { AgentId, WidgetType, Priority } from './src/contracts';
 
 // Mock Data for Sessions
 const MOCK_SESSIONS: Session[] = [
@@ -21,7 +27,53 @@ const App: React.FC = () => {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [attachments, setAttachments] = useState<Attachment[]>([]); 
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+
+  // ============================================
+  // TELEMETRY & WIDGET QUEUE
+  // ============================================
+
+  // Initialize telemetry service
+  useTelemetry({ debug: import.meta.env.DEV });
+
+  // Attention budget and widget queue
+  const {
+    visible: visibleWidgets,
+    enqueue: enqueueWidget,
+    dismiss: dismissWidget,
+    markInteracted,
+    markCompleted,
+    startWorkout,
+    endWorkout,
+    state: attentionState,
+    queueLength,
+  } = useAttentionBudget();
+
+  // Helper to enqueue widget from AI response
+  const enqueueAIWidget = useCallback((
+    widgetType: string,
+    props: Record<string, unknown>,
+    agentId: string,
+    priority: Priority = 'medium'
+  ) => {
+    const payload: QueueWidgetPayload = {
+      widgetId: uuid(),
+      widgetType: widgetType as WidgetType,
+      agentId: agentId as AgentId,
+      priority,
+      position: 'inline', // AI responses are inline
+      queueBehavior: 'defer',
+      dismissable: true,
+      createdAt: new Date().toISOString(),
+      data: props,
+    };
+    enqueueWidget(payload);
+  }, [enqueueWidget]);
+
+  // ============================================
+  // MESSAGES STATE
+  // ============================================
+
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'assistant', 
@@ -246,6 +298,10 @@ const App: React.FC = () => {
 
   const status = statusConfig[backendStatus];
 
+  // Filter floating widgets from visible queue
+  const floatingWidgets = visibleWidgets.filter(w => w.payload.position === 'floating');
+  const highPriorityWidgets = visibleWidgets.filter(w => w.payload.priority === 'high' && w.payload.position !== 'floating');
+
   return (
     <div className="flex h-screen bg-[#050505] text-white font-sans overflow-hidden">
       
@@ -287,9 +343,24 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-          <button className="p-2 hover:bg-white/5 rounded-full text-white/40 hover:text-white transition-colors">
-            <MoreVertical size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Queue indicator */}
+            {queueLength > 0 && (
+              <div className="px-2 py-1 rounded-full bg-[#6D00FF]/20 border border-[#6D00FF]/30 text-[10px] text-[#6D00FF]">
+                {queueLength} queued
+              </div>
+            )}
+            {/* Workout mode indicator */}
+            {attentionState.isWorkoutActive && (
+              <div className="px-2 py-1 rounded-full bg-[#EF4444]/20 border border-[#EF4444]/30 text-[10px] text-[#EF4444] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-[#EF4444] rounded-full animate-pulse"></span>
+                Workout Mode
+              </div>
+            )}
+            <button className="p-2 hover:bg-white/5 rounded-full text-white/40 hover:text-white transition-colors">
+              <MoreVertical size={18} />
+            </button>
+          </div>
         </div>
 
         {/* CHAT AREA */}
@@ -450,6 +521,66 @@ const App: React.FC = () => {
             Genesis OS v3.0 Powered by Gemini
           </p>
         </div>
+
+        {/* FLOATING WIDGETS LAYER */}
+        {floatingWidgets.length > 0 && (
+          <div className="fixed bottom-32 right-4 z-50 flex flex-col gap-3 max-w-sm">
+            {floatingWidgets.map(widget => (
+              <div
+                key={widget.id}
+                className="animate-in slide-in-from-right duration-300 relative"
+              >
+                <button
+                  onClick={() => dismissWidget(widget.id, 'user_action')}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
+                >
+                  <X size={12} />
+                </button>
+                <A2UIMediator
+                  payload={{
+                    type: widget.payload.widgetType,
+                    props: widget.payload.data as Record<string, unknown>,
+                  }}
+                  onAction={(id, d) => {
+                    markInteracted(widget.id);
+                    handleAction(id, d);
+                  }}
+                  agent={widget.payload.agentId}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* HIGH PRIORITY WIDGETS BANNER */}
+        {highPriorityWidgets.length > 0 && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+            {highPriorityWidgets.slice(0, 1).map(widget => (
+              <div
+                key={widget.id}
+                className="animate-in slide-in-from-top duration-300 relative bg-[#1a1a1a] border border-[#6D00FF]/30 rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <button
+                  onClick={() => dismissWidget(widget.id, 'user_action')}
+                  className="absolute top-3 right-3 w-6 h-6 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
+                >
+                  <X size={12} />
+                </button>
+                <A2UIMediator
+                  payload={{
+                    type: widget.payload.widgetType,
+                    props: widget.payload.data as Record<string, unknown>,
+                  }}
+                  onAction={(id, d) => {
+                    markCompleted(widget.id, d);
+                    handleAction(id, d);
+                  }}
+                  agent={widget.payload.agentId}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
