@@ -4,9 +4,15 @@
 # Core ADK (uses installed compatible version)
 google-adk>=1.1.0
 
+# Gemini Live API for voice
+google-genai>=0.4.0
+
 # Web Framework
 fastapi>=0.125.0
 uvicorn>=0.34.0
+
+# WebSockets (for voice streaming)
+websockets>=12.0
 
 # Data Validation
 pydantic>=2.10.0

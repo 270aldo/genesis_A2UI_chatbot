@@ -21,6 +21,7 @@ from google.genai import types
 from agent import root_agent
 from schemas.request import ChatRequest, EventsRequest
 from schemas.response import AgentResponse
+from voice import voice_router
 
 MAX_ATTACHMENTS = 4
 
@@ -121,6 +122,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include voice router for WebSocket endpoint
+app.include_router(voice_router)
 
 
 @app.get("/health")
@@ -279,13 +283,9 @@ def parse_agent_response(events: list) -> AgentResponse:
                         except Exception:
                             pass
 
-        # Check for author attribute to determine agent
-        if hasattr(event, 'author') and event.author:
-            agent = event.author.upper()
-
-        # Check for agent_name attribute
-        if hasattr(event, 'agent_name') and event.agent_name:
-            agent = event.agent_name.upper()
+        # V3: Keep agent as GENESIS - unified identity
+        # Internal routing is hidden from users
+        pass
 
     # Combine all text parts
     text = "\n".join(text_parts) if text_parts else ""
@@ -306,7 +306,7 @@ def parse_agent_response(events: list) -> AgentResponse:
                 prefix = json_text[:json_text.find("```")].strip()
                 parsed_text = parsed.get("text", "")
                 text = f"{prefix}\n\n{parsed_text}".strip() if prefix else parsed_text
-                agent = parsed.get("agent", agent).upper()
+                # V3: Don't override agent from parsed JSON - always GENESIS
                 if "payload" in parsed:
                     payload = parsed.get("payload")
             except json.JSONDecodeError:
@@ -316,7 +316,7 @@ def parse_agent_response(events: list) -> AgentResponse:
         try:
             parsed = json.loads(json_text)
             text = parsed.get("text", text)
-            agent = parsed.get("agent", agent).upper()
+            # V3: Don't override agent from parsed JSON - always GENESIS
             if "payload" in parsed:
                 payload = parsed.get("payload")
         except json.JSONDecodeError:
@@ -353,7 +353,7 @@ def parse_agent_response(events: list) -> AgentResponse:
                     prefix = json_text[:start].strip()
                     parsed_text = parsed.get("text", "")
                     text = f"{prefix}\n\n{parsed_text}".strip() if prefix else parsed_text
-                    agent = parsed.get("agent", agent).upper()
+                    # V3: Don't override agent from parsed JSON - always GENESIS
                     if "payload" in parsed:
                         payload = parsed.get("payload")
             except (json.JSONDecodeError, ValueError):
