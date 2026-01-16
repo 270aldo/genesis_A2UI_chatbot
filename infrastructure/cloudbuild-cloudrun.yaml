@@ -1,0 +1,210 @@
+# NGX GENESIS V3 - Cloud Build for Cloud Run Services
+# Deploys: orchestrator, voice, analytics, recovery
+# Trigger: Push to main branch with changes in relevant directories
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE_NAME: ''  # Set dynamically or via trigger
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+steps:
+  # Step 1: Run tests
+  - name: 'python:3.11-slim'
+    id: 'test'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install -r backend/requirements.txt
+        pip install pytest pytest-asyncio pytest-cov
+        cd backend && pytest tests/ -v --cov=. --cov-fail-under=80
+    waitFor: ['-']
+
+  # Step 2: Build Orchestrator image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-orchestrator'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/genesis-orchestrator:$SHORT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/genesis-orchestrator:latest'
+      - '-f'
+      - 'backend/Dockerfile'
+      - 'backend'
+    waitFor: ['test']
+
+  # Step 3: Build Voice image (when genesis_voice/ exists)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-voice'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ -d "genesis_voice" ]; then
+          docker build \
+            -t gcr.io/$PROJECT_ID/genesis-voice:$SHORT_SHA \
+            -t gcr.io/$PROJECT_ID/genesis-voice:latest \
+            -f genesis_voice/Dockerfile \
+            genesis_voice
+        else
+          echo "Voice service not yet implemented, skipping..."
+        fi
+    waitFor: ['test']
+
+  # Step 4: Build Analytics image (when implemented)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-analytics'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ -d "genesis_analytics" ]; then
+          docker build \
+            -t gcr.io/$PROJECT_ID/genesis-analytics:$SHORT_SHA \
+            -t gcr.io/$PROJECT_ID/genesis-analytics:latest \
+            -f genesis_analytics/Dockerfile \
+            genesis_analytics
+        else
+          echo "Analytics service not yet implemented, skipping..."
+        fi
+    waitFor: ['test']
+
+  # Step 5: Build Recovery image (when implemented)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-recovery'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ -d "genesis_recovery" ]; then
+          docker build \
+            -t gcr.io/$PROJECT_ID/genesis-recovery:$SHORT_SHA \
+            -t gcr.io/$PROJECT_ID/genesis-recovery:latest \
+            -f genesis_recovery/Dockerfile \
+            genesis_recovery
+        else
+          echo "Recovery service not yet implemented, skipping..."
+        fi
+    waitFor: ['test']
+
+  # Step 6: Push all images
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-images'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker push gcr.io/$PROJECT_ID/genesis-orchestrator:$SHORT_SHA
+        docker push gcr.io/$PROJECT_ID/genesis-orchestrator:latest
+
+        # Push voice if exists
+        if docker images | grep -q "genesis-voice"; then
+          docker push gcr.io/$PROJECT_ID/genesis-voice:$SHORT_SHA
+          docker push gcr.io/$PROJECT_ID/genesis-voice:latest
+        fi
+
+        # Push analytics if exists
+        if docker images | grep -q "genesis-analytics"; then
+          docker push gcr.io/$PROJECT_ID/genesis-analytics:$SHORT_SHA
+          docker push gcr.io/$PROJECT_ID/genesis-analytics:latest
+        fi
+
+        # Push recovery if exists
+        if docker images | grep -q "genesis-recovery"; then
+          docker push gcr.io/$PROJECT_ID/genesis-recovery:$SHORT_SHA
+          docker push gcr.io/$PROJECT_ID/genesis-recovery:latest
+        fi
+    waitFor:
+      - 'build-orchestrator'
+      - 'build-voice'
+      - 'build-analytics'
+      - 'build-recovery'
+
+  # Step 7: Deploy Orchestrator to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-orchestrator'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'genesis-orchestrator'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/genesis-orchestrator:$SHORT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--min-instances'
+      - '1'
+      - '--max-instances'
+      - '10'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--port'
+      - '8000'
+      - '--set-env-vars'
+      - 'PROJECT_ID=$PROJECT_ID,ENVIRONMENT=prod'
+      - '--set-secrets'
+      - 'GOOGLE_API_KEY=google-api-key:latest,SUPABASE_URL=supabase-url:latest,SUPABASE_ANON_KEY=supabase-anon-key:latest'
+    waitFor: ['push-images']
+
+  # Step 8: Deploy Voice to Cloud Run (if built)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-voice'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if docker images | grep -q "genesis-voice"; then
+          gcloud run deploy genesis-voice \
+            --image gcr.io/$PROJECT_ID/genesis-voice:$SHORT_SHA \
+            --region ${_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 5 \
+            --memory 1Gi \
+            --cpu 1 \
+            --port 8001 \
+            --timeout 3600 \
+            --set-env-vars PROJECT_ID=$PROJECT_ID,ENVIRONMENT=prod \
+            --set-secrets GOOGLE_API_KEY=google-api-key:latest
+        else
+          echo "Voice service not built, skipping deploy..."
+        fi
+    waitFor: ['push-images']
+
+  # Step 9: Smoke test deployed services
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'smoke-test'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Get orchestrator URL
+        URL=$(gcloud run services describe genesis-orchestrator --region ${_REGION} --format 'value(status.url)')
+
+        # Test health endpoint
+        echo "Testing health endpoint: $URL/health"
+        curl -f -s "$URL/health" || exit 1
+
+        echo "Smoke tests passed!"
+    waitFor:
+      - 'deploy-orchestrator'
+
+images:
+  - 'gcr.io/$PROJECT_ID/genesis-orchestrator:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/genesis-orchestrator:latest'
+
+timeout: '1800s'  # 30 minutes
+
+# Trigger configuration (set in Cloud Build console):
+# - Trigger on push to main branch
+# - File filter: backend/**, genesis_voice/**, genesis_analytics/**, genesis_recovery/**

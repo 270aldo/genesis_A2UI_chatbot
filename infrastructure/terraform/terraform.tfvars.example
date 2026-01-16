@@ -1,0 +1,43 @@
+# NGX GENESIS V3 - Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# Required: Your GCP Project ID
+project_id = "your-gcp-project-id"
+
+# Optional: Region (default: us-central1)
+region = "us-central1"
+
+# Optional: Environment name
+environment = "prod"
+
+# Optional: Custom domain (leave empty for IP-only access)
+domain = ""  # e.g., "api.genesis.mx"
+
+# Optional: Rate limiting (requests per minute per IP)
+rate_limit_threshold = 100
+
+# Optional: Redis configuration
+redis_tier           = "BASIC"  # or "STANDARD_HA" for high availability
+redis_memory_size_gb = 1
+
+# Optional: Custom labels
+labels = {
+  project     = "ngx-genesis"
+  environment = "prod"
+  managed-by  = "terraform"
+  team        = "engineering"
+}
+
+# Cloud Run Services (modify if needed)
+# services = {
+#   orchestrator = {
+#     image          = "gcr.io/your-project/genesis-orchestrator"
+#     min_instances  = 1
+#     max_instances  = 10
+#     cpu            = "1"
+#     memory         = "512Mi"
+#     port           = 8000
+#     public         = true
+#   }
+#   # ... add more services
+# }

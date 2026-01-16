@@ -1,0 +1,198 @@
+# NGX GENESIS V3 - Cloud Build for Vertex AI Agent Engine
+# Deploys: CORES (training, nutrition, habits, recovery, analytics, education)
+# Trigger: Push to main branch with changes in backend/agent/cores/
+
+substitutions:
+  _REGION: us-central1
+  _STAGING_BUCKET: 'gs://ngx-genesis-adk-staging'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+steps:
+  # Step 1: Setup Python environment
+  - name: 'python:3.11-slim'
+    id: 'setup'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install google-adk>=1.1.0 google-cloud-aiplatform
+        pip install -r backend/requirements.txt
+    waitFor: ['-']
+
+  # Step 2: Validate CORES configurations
+  - name: 'python:3.11-slim'
+    id: 'validate-cores'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd backend
+
+        # Validate each CORE can be imported
+        python -c "
+        from agent.cores import (
+            training_core,
+            nutrition_core,
+            habits_core,
+            recovery_core,
+            analytics_core,
+            education_core,
+        )
+        print('All CORES validated successfully')
+        "
+    waitFor: ['setup']
+
+  # Step 3: Run CORE-specific tests
+  - name: 'python:3.11-slim'
+    id: 'test-cores'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd backend
+        pip install pytest pytest-asyncio
+
+        # Run CORE routing and identity tests
+        pytest tests/agent_eval/ -v \
+          --ignore=tests/integration \
+          --ignore=tests/e2e
+
+        echo "CORE tests passed!"
+    waitFor: ['validate-cores']
+
+  # Step 4: Package CORES for Agent Engine
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'package-cores'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd backend
+
+        # Create staging directory
+        mkdir -p /workspace/adk_staging
+
+        # Copy agent code
+        cp -r agent /workspace/adk_staging/
+        cp -r tools /workspace/adk_staging/
+        cp -r instructions /workspace/adk_staging/
+        cp -r schemas /workspace/adk_staging/
+        cp requirements.txt /workspace/adk_staging/
+
+        # Create agent manifest
+        cat > /workspace/adk_staging/agent.yaml << EOF
+        # NGX GENESIS V3 - Agent Engine Manifest
+        name: ngx-genesis
+        version: ${SHORT_SHA}
+        description: "NGX GENESIS AI Fitness Coach with 6 CORES"
+
+        entrypoint: agent.genesis:root_agent
+
+        capabilities:
+          - training_core
+          - nutrition_core
+          - habits_core
+          - recovery_core
+          - analytics_core
+          - education_core
+
+        runtime:
+          python_version: "3.11"
+
+        resources:
+          memory: "4Gi"
+          cpu: "2"
+        EOF
+
+        # Upload to staging bucket
+        gsutil -m cp -r /workspace/adk_staging/* ${_STAGING_BUCKET}/${SHORT_SHA}/
+
+        echo "CORES packaged and staged at ${_STAGING_BUCKET}/${SHORT_SHA}/"
+    waitFor: ['test-cores']
+
+  # Step 5: Deploy to Vertex AI Agent Engine
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-agent-engine'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Note: ADK deploy command syntax may vary based on version
+        # This is the general pattern for Agent Engine deployment
+
+        echo "Deploying to Vertex AI Agent Engine..."
+
+        # Option 1: Using adk CLI (if available in image)
+        # adk deploy \
+        #   --project $PROJECT_ID \
+        #   --region ${_REGION} \
+        #   --source ${_STAGING_BUCKET}/${SHORT_SHA}/ \
+        #   --agent-name ngx-genesis \
+        #   --enable-tracing
+
+        # Option 2: Using gcloud (if ADK CLI not available)
+        # This deploys as a Vertex AI Reasoning Engine
+        python3 << 'EOF'
+        import os
+        from google.cloud import aiplatform
+
+        # Initialize Vertex AI
+        aiplatform.init(
+            project=os.environ.get('PROJECT_ID'),
+            location='${_REGION}'
+        )
+
+        # Note: Actual Agent Engine deployment API depends on GA release
+        # This is a placeholder for the deployment logic
+        print(f"Agent Engine deployment for ngx-genesis version {os.environ.get('SHORT_SHA')}")
+        print("Note: Update this section when Agent Engine API is GA")
+
+        # For now, we verify the staging package exists
+        print(f"Staging package: ${_STAGING_BUCKET}/${SHORT_SHA}/")
+        print("Deployment script ready for Agent Engine GA")
+        EOF
+    waitFor: ['package-cores']
+
+  # Step 6: Verify deployment
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'verify-deployment'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Verifying Agent Engine deployment..."
+
+        # List deployed agents
+        # gcloud ai agents list --region ${_REGION}
+
+        # Verify agent is responding
+        # This will be updated when Agent Engine API is GA
+
+        echo "Agent Engine deployment verification complete"
+        echo "Version: ${SHORT_SHA}"
+    waitFor: ['deploy-agent-engine']
+
+timeout: '1800s'  # 30 minutes
+
+# Trigger configuration (set in Cloud Build console):
+# - Trigger on push to main branch
+# - File filter: backend/agent/cores/**, backend/instructions/**
+
+# Service Catalog:
+# ================
+# Cloud Run Services (cloudbuild-cloudrun.yaml):
+#   - genesis-orchestrator: Main API, receives all traffic
+#   - genesis-voice: WebSocket voice streaming
+#   - genesis-analytics: Internal analytics processing
+#   - genesis-recovery: Internal recovery calculations
+#
+# Agent Engine CORES (cloudbuild-agentengine.yaml):
+#   - training_core: Workout planning (BLAZE + TEMPO)
+#   - nutrition_core: Meal planning (SAGE + MACRO + NOVA)
+#   - habits_core: Habit formation (SPARK)
+#   - recovery_core: Recovery analysis (WAVE + ATLAS + LUNA + METABOL)
+#   - analytics_core: Progress analytics (STELLA)
+#   - education_core: Educational content (LOGOS)

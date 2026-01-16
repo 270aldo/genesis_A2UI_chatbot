@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NGX GENESIS A2UI - Multiagent AI fitness chatbot with React frontend and FastAPI + Google ADK backend. Implements A2UI (AI-to-UI) paradigm where agents generate dynamic widgets based on user intent.
+NGX GENESIS A2UI V3 - Multiagent AI fitness chatbot with React frontend and FastAPI + Google ADK backend. Implements A2UI (AI-to-UI) paradigm where agents generate dynamic widgets based on user intent.
+
+**V3 Architecture**: Consolidated 12 specialists into 6 CORES (Consolidated Orchestrated Response Engines) with stateless operation via Session Clipboard pattern.
 
 ## Development Commands
 
@@ -29,7 +31,7 @@ make docker-down      # Stop containers
 cd backend && adk web ./agent  # Visual agent testing UI
 ```
 
-## Architecture
+## Architecture (V3 - CORES)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -41,16 +43,20 @@ cd backend && adk web ./agent  # Visual agent testing UI
 ┌──────────────────────────▼──────────────────────────────────┐
 │                  Backend (FastAPI + ADK)                     │
 │  main.py → Runner.run_async() → Agent delegation            │
+│  SessionClipboard (Redis + Supabase) for state              │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────┐
-│                    Agent Hierarchy                           │
-│  GENESIS (root_agent) → Routes based on description match   │
-│      ├── BLAZE  → Strength (workout-card, timer-widget)     │
-│      ├── SAGE   → Nutrition (meal-plan, recipe-card)        │
-│      ├── SPARK  → Habits (checklist, daily-checkin)         │
-│      ├── STELLA → Analytics (progress-dashboard)            │
-│      └── LOGOS  → Education (TEXT_ONLY)                     │
+│                    GENESIS Orchestrator                      │
+│  Unified identity - users only see "GENESIS"                │
+│  Routes to 6 stateless CORES based on intent                │
+├─────────────────────────────────────────────────────────────┤
+│  Training CORE    → BLAZE+TEMPO (workout, cardio, HIIT)     │
+│  Nutrition CORE   → SAGE+MACRO+NOVA (meals, tracking, supps)│
+│  Recovery CORE    → WAVE+METABOL+ATLAS+LUNA (HRV, sleep)    │
+│  Habits CORE      → SPARK (habits, streaks, check-ins)      │
+│  Analytics CORE   → STELLA (progress, insights, trends)     │
+│  Education CORE   → LOGOS (explanations, TEXT_ONLY)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
