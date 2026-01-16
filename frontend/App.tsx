@@ -7,6 +7,7 @@ import { COLORS, getAgentColor } from './constants';
 import { A2UIMediator } from './components/Widgets';
 import { generateContent, API_URL } from './services/api';
 import { Sidebar } from './components/Sidebar';
+import { VoiceMode, VoiceButton } from './components/voice';
 import { v4 as uuid } from 'uuid';
 
 // Widget Queue & Telemetry
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
 
   // ============================================
   // TELEMETRY & WIDGET QUEUE
@@ -357,6 +359,8 @@ const App: React.FC = () => {
                 Workout Mode
               </div>
             )}
+            {/* Voice Mode Button */}
+            <VoiceButton onClick={() => setIsVoiceModeOpen(true)} />
             <button className="p-2 hover:bg-white/5 rounded-full text-white/40 hover:text-white transition-colors">
               <MoreVertical size={18} />
             </button>
@@ -582,6 +586,24 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* VOICE MODE OVERLAY */}
+      <VoiceMode
+        isOpen={isVoiceModeOpen}
+        onClose={() => setIsVoiceModeOpen(false)}
+        onWidgetReceived={(payload) => {
+          // Add widget from voice as a new message
+          const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            text: '',
+            agent: 'GENESIS',
+            payload,
+            timestamp,
+          }]);
+        }}
+        sessionId={currentSessionId}
+      />
     </div>
   );
 };

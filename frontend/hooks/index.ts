@@ -5,3 +5,4 @@
 export { useCheckin } from './useCheckin';
 export { useWorkoutSession } from './useWorkoutSession';
 export { useWidgetTelemetry, useSimpleTelemetry } from './useWidgetTelemetry';
+export { useVoiceSession } from './useVoiceSession';
