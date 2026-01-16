@@ -50,3 +50,8 @@ supabase/.branches/
 
 # Misc
 *.zip
+
+# Claude Code
+.claude/
+**/CLAUDE.md
+!CLAUDE.md
