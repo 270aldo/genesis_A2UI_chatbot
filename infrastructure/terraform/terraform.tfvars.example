@@ -13,12 +13,22 @@ environment = "prod"
 # Optional: Custom domain (leave empty for IP-only access)
 domain = ""  # e.g., "api.genesis.mx"
 
+# Optional: Public API base URL (for scheduler jobs)
+api_base_url = ""  # e.g., "https://api.genesis.mx"
+
 # Optional: Rate limiting (requests per minute per IP)
 rate_limit_threshold = 100
 
 # Optional: Redis configuration
 redis_tier           = "BASIC"  # or "STANDARD_HA" for high availability
 redis_memory_size_gb = 1
+
+# Optional: Wearables daily sync (Cloud Scheduler)
+wearables_sync_enabled   = false
+wearables_sync_providers = ["oura", "whoop"]
+wearables_sync_user_id   = "system"
+wearables_sync_schedule  = "0 6 * * *"
+wearables_sync_time_zone = "UTC"
 
 # Optional: Custom labels
 labels = {

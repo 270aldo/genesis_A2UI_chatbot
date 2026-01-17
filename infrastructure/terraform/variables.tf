@@ -112,3 +112,40 @@ variable "labels" {
     managed-by  = "terraform"
   }
 }
+
+# Wearables sync (Cloud Scheduler)
+variable "api_base_url" {
+  description = "Public base URL for API (e.g., https://api.genesis.mx)"
+  type        = string
+  default     = ""
+}
+
+variable "wearables_sync_enabled" {
+  description = "Enable daily wearable sync jobs"
+  type        = bool
+  default     = false
+}
+
+variable "wearables_sync_providers" {
+  description = "Wearable providers to sync via scheduler"
+  type        = list(string)
+  default     = ["oura", "whoop"]
+}
+
+variable "wearables_sync_user_id" {
+  description = "User ID to sync (system or service account user)"
+  type        = string
+  default     = "system"
+}
+
+variable "wearables_sync_schedule" {
+  description = "Cron schedule for daily wearable sync"
+  type        = string
+  default     = "0 6 * * *"
+}
+
+variable "wearables_sync_time_zone" {
+  description = "Time zone for wearable sync schedule"
+  type        = string
+  default     = "UTC"
+}
