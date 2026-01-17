@@ -23,6 +23,7 @@ from schemas.clipboard import MessageRole
 from schemas.request import ChatRequest, EventsRequest
 from schemas.response import AgentResponse
 from services.session_store import get_or_create_session, set_session
+from wearables import wearables_router
 from voice import voice_router
 
 MAX_ATTACHMENTS = 4
@@ -128,6 +129,7 @@ app.add_middleware(
 
 # Include voice router for WebSocket endpoint
 app.include_router(voice_router)
+app.include_router(wearables_router)
 
 
 @app.get("/health")
