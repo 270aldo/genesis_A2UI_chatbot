@@ -109,6 +109,6 @@ async def voice_health():
             "bidirectional_audio": True,
             "widget_generation": True,
             "languages": ["es", "en"],
-            "model": "gemini-live-2.5-flash-preview",
+            "model": "gemini-2.0-flash-exp",
         },
     }

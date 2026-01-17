@@ -10,7 +10,7 @@ Features:
 - Tool calling for widget generation
 - Voice Activity Detection (VAD)
 
-Model: gemini-live-2.5-flash-preview (or gemini-2.0-flash-live)
+Model: gemini-2.0-flash-exp
 Voice: Puck (neutral, works well for ES/EN)
 """
 
@@ -112,8 +112,8 @@ class GeminiLiveClient:
     and processes tool calls for widget generation.
     """
 
-    # Model for live audio streaming
-    MODEL = "gemini-live-2.5-flash-preview"
+    # Model for live audio streaming (Gemini 2.0 Live API)
+    MODEL = "gemini-2.0-flash-exp"
 
     # Voice configuration
     DEFAULT_VOICE = "Puck"  # Neutral voice, good for ES/EN
@@ -134,6 +134,7 @@ class GeminiLiveClient:
             http_options={"api_version": "v1beta"},
         )
         self.session: Any = None
+        self._session_cm: Any = None  # Store context manager for cleanup
         self._connected = False
         self._receive_task: asyncio.Task | None = None
 
@@ -170,25 +171,30 @@ class GeminiLiveClient:
         }
 
         try:
-            self.session = await self.client.aio.live.connect(
+            # aio.live.connect() returns an async context manager
+            # We manually enter it and store for later cleanup
+            self._session_cm = self.client.aio.live.connect(
                 model=self.MODEL,
                 config=config,
             )
+            self.session = await self._session_cm.__aenter__()
             self._connected = True
             logger.info(f"Connected to Gemini Live API with voice: {voice}")
         except Exception as e:
             logger.error(f"Failed to connect to Gemini Live API: {e}")
+            self._session_cm = None
             raise
 
     async def disconnect(self) -> None:
         """Disconnect from Gemini Live API."""
-        if self.session:
+        if self._session_cm:
             try:
-                self.session.close()
+                await self._session_cm.__aexit__(None, None, None)
             except Exception as e:
                 logger.warning(f"Error closing Gemini session: {e}")
 
         self.session = None
+        self._session_cm = None
         self._connected = False
         logger.info("Disconnected from Gemini Live API")
 

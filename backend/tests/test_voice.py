@@ -281,7 +281,7 @@ class TestGeminiLiveClient:
 
     def test_client_model_constant(self):
         """Test model constant is set."""
-        assert GeminiLiveClient.MODEL == "gemini-live-2.5-flash-preview"
+        assert GeminiLiveClient.MODEL == "gemini-2.0-flash-exp"
 
     def test_client_voice_constant(self):
         """Test default voice is set."""
