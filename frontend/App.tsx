@@ -25,6 +25,7 @@ const MOCK_SESSIONS: Session[] = [
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
   const [currentSessionId, setCurrentSessionId] = useState<string>('1');
+  const [currentUserId] = useState<string>('default-user');
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -164,7 +165,8 @@ const App: React.FC = () => {
       const result = await generateContent(
         newMsg.text || "Analiza esta imagen",
         currentAttachments,
-        currentSessionId
+        currentSessionId,
+        currentUserId
       );
       
       const aiMsg: Message = {
@@ -206,7 +208,7 @@ const App: React.FC = () => {
       // 2. Send System Event to Backend
       // Format: SYSTEM_EVENT: ACTION_TRIGGERED id=X payload={...}
       const systemEventText = `SYSTEM_EVENT: ACTION_TRIGGERED id=${id} payload=${JSON.stringify(data || {})}`;
-      const result = await generateContent(systemEventText, [], currentSessionId);
+      const result = await generateContent(systemEventText, [], currentSessionId, currentUserId);
 
       // 3. Render Real Response
       const aiMsg: Message = {

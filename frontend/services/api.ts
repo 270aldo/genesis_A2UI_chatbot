@@ -5,7 +5,8 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export const generateContent = async (
   prompt: string,
   attachments: Attachment[] = [],
-  sessionId: string = 'default-session'
+  sessionId: string = 'default-session',
+  userId: string = 'default-user'
 ): Promise<GeminiResponse> => {
   try {
     const sanitizedAttachments = attachments
@@ -26,6 +27,7 @@ export const generateContent = async (
       body: JSON.stringify({
         message: prompt,
         session_id: sessionId,
+        user_id: userId,
         attachments: sanitizedAttachments
       }),
     });

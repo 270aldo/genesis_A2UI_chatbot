@@ -27,7 +27,6 @@ from wearables import wearables_router
 from voice import voice_router
 
 MAX_ATTACHMENTS = 4
-DEFAULT_USER_ID = "default"
 
 
 def _decode_base64(data: str) -> bytes:
@@ -157,19 +156,19 @@ async def chat(request: ChatRequest):
         # Get or create ADK session
         session = await session_service.get_session(
             app_name="ngx-a2ui",
-            user_id=DEFAULT_USER_ID,
+            user_id=request.user_id,
             session_id=request.session_id,
         )
         
         if session is None:
             session = await session_service.create_session(
                 app_name="ngx-a2ui",
-                user_id=DEFAULT_USER_ID,
+                user_id=request.user_id,
                 session_id=request.session_id,
             )
         
         # Persist clipboard state (independent of ADK session)
-        clipboard = await get_or_create_session(request.session_id, DEFAULT_USER_ID)
+        clipboard = await get_or_create_session(request.session_id, request.user_id)
         clipboard.add_message(
             MessageRole.USER,
             request.message,

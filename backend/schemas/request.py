@@ -40,6 +40,12 @@ class ChatRequest(BaseModel):
         examples=["user-123-session-456"],
     )
 
+    user_id: str = Field(
+        default="default-user",
+        description="User ID for personalization and wearable context",
+        examples=["user-123"],
+    )
+
     attachments: List[Attachment] = Field(
         default_factory=list,
         description="Optional attachments (base64)"
