@@ -49,6 +49,7 @@ export interface UseVoiceSessionReturn {
 export interface UseVoiceSessionOptions {
   onWidgetReceived?: (payload: WidgetPayload) => void;
   sessionId?: string;
+  userId?: string;
   language?: string;
 }
 
@@ -56,7 +57,7 @@ export interface UseVoiceSessionOptions {
  * Hook for managing voice session with GENESIS.
  */
 export function useVoiceSession(options: UseVoiceSessionOptions = {}): UseVoiceSessionReturn {
-  const { onWidgetReceived, sessionId, language = 'es' } = options;
+  const { onWidgetReceived, sessionId, userId, language = 'es' } = options;
 
   // State
   const [connectionState, setConnectionState] = useState<VoiceConnectionState>('disconnected');
@@ -127,12 +128,12 @@ export function useVoiceSession(options: UseVoiceSessionOptions = {}): UseVoiceS
     wsClientRef.current = client;
 
     try {
-      await client.connect(sessionId, language);
+      await client.connect(sessionId, language, userId);
     } catch (err) {
       setError('Failed to connect to voice service');
       throw err;
     }
-  }, [sessionId, language, onWidgetReceived]);
+  }, [sessionId, userId, language, onWidgetReceived]);
 
   /**
    * Disconnect from voice WebSocket.

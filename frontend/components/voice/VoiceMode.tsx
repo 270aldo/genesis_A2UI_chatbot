@@ -19,6 +19,7 @@ interface VoiceModeProps {
   onClose: () => void;
   onWidgetReceived?: (payload: WidgetPayload) => void;
   sessionId?: string;
+  userId?: string;
 }
 
 export const VoiceMode: React.FC<VoiceModeProps> = ({
@@ -26,6 +27,7 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({
   onClose,
   onWidgetReceived,
   sessionId,
+  userId,
 }) => {
   const {
     connectionState,
@@ -42,6 +44,7 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({
   } = useVoiceSession({
     onWidgetReceived,
     sessionId,
+    userId,
     language: 'es',
   });
 

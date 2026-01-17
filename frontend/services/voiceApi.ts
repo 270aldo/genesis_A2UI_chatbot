@@ -44,7 +44,7 @@ export class VoiceWebSocketClient {
   /**
    * Connect to voice WebSocket endpoint.
    */
-  async connect(sessionId?: string, language: string = 'es'): Promise<void> {
+  async connect(sessionId?: string, language: string = 'es', userId?: string): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.warn('VoiceWebSocket: Already connected');
       return;
@@ -55,6 +55,7 @@ export class VoiceWebSocketClient {
     // Build URL with query params
     const url = new URL(this.options.wsUrl);
     if (sessionId) url.searchParams.set('session_id', sessionId);
+    if (userId) url.searchParams.set('user_id', userId);
     url.searchParams.set('language', language);
 
     return new Promise((resolve, reject) => {

@@ -10,6 +10,18 @@ import { Sidebar } from './components/Sidebar';
 import { VoiceMode, VoiceButton } from './components/voice';
 import { v4 as uuid } from 'uuid';
 
+const getOrCreateLocalId = (key: string, prefix: string) => {
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const id = `${prefix}-${uuid()}`;
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    return `${prefix}-${uuid()}`;
+  }
+};
+
 // Widget Queue & Telemetry
 import { useAttentionBudget, type QueueWidgetPayload } from './src/hooks';
 import { useTelemetry, eventBus } from './src/services/events';
@@ -25,7 +37,7 @@ const MOCK_SESSIONS: Session[] = [
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
   const [currentSessionId, setCurrentSessionId] = useState<string>('1');
-  const [currentUserId] = useState<string>('default-user');
+  const [currentUserId] = useState<string>(() => getOrCreateLocalId('ngx_user_id', 'user'));
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -326,7 +338,7 @@ const App: React.FC = () => {
              text: 'Nueva sesión iniciada.', 
              timestamp: new Date().toLocaleTimeString() 
            }]);
-           setCurrentSessionId('new');
+           setCurrentSessionId(`session-${uuid()}`);
         }}
         onCloseMobile={() => setIsSidebarOpen(false)}
       />
@@ -609,6 +621,7 @@ const App: React.FC = () => {
           }]);
         }}
         sessionId={currentSessionId}
+        userId={currentUserId}
       />
     </div>
   );
