@@ -161,7 +161,11 @@ const App: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const result = await generateContent(newMsg.text || "Analiza esta imagen", currentAttachments);
+      const result = await generateContent(
+        newMsg.text || "Analiza esta imagen",
+        currentAttachments,
+        currentSessionId
+      );
       
       const aiMsg: Message = {
         role: 'assistant',
@@ -202,7 +206,7 @@ const App: React.FC = () => {
       // 2. Send System Event to Backend
       // Format: SYSTEM_EVENT: ACTION_TRIGGERED id=X payload={...}
       const systemEventText = `SYSTEM_EVENT: ACTION_TRIGGERED id=${id} payload=${JSON.stringify(data || {})}`;
-      const result = await generateContent(systemEventText);
+      const result = await generateContent(systemEventText, [], currentSessionId);
 
       // 3. Render Real Response
       const aiMsg: Message = {

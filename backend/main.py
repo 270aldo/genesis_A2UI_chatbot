@@ -19,11 +19,14 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from agent import root_agent
+from schemas.clipboard import MessageRole
 from schemas.request import ChatRequest, EventsRequest
 from schemas.response import AgentResponse
+from services.session_store import get_or_create_session, set_session
 from voice import voice_router
 
 MAX_ATTACHMENTS = 4
+DEFAULT_USER_ID = "default"
 
 
 def _decode_base64(data: str) -> bytes:
@@ -149,20 +152,29 @@ async def chat(request: ChatRequest):
     try:
         logger.info(f"Chat request: {request.message[:50]}...")
         
-        # Get or create session
+        # Get or create ADK session
         session = await session_service.get_session(
             app_name="ngx-a2ui",
-            user_id="default",
+            user_id=DEFAULT_USER_ID,
             session_id=request.session_id,
         )
         
         if session is None:
             session = await session_service.create_session(
                 app_name="ngx-a2ui",
-                user_id="default",
+                user_id=DEFAULT_USER_ID,
                 session_id=request.session_id,
             )
         
+        # Persist clipboard state (independent of ADK session)
+        clipboard = await get_or_create_session(request.session_id, DEFAULT_USER_ID)
+        clipboard.add_message(
+            MessageRole.USER,
+            request.message,
+            agent="GENESIS",
+        )
+        await set_session(clipboard)
+
         # Invoke agent - run_async returns an async generator
         # Create Content object from user message + optional attachments
         parts: list[types.Part] = []
@@ -196,6 +208,15 @@ async def chat(request: ChatRequest):
         # Parse response - try to extract from all events
         response = parse_agent_response(all_events)
         logger.info(f"Response from {response.agent}: {response.text[:50]}...")
+
+        widget_type = response.payload.type if response.payload else None
+        clipboard.add_message(
+            MessageRole.ASSISTANT,
+            response.text,
+            agent=response.agent,
+            widget_type=widget_type,
+        )
+        await set_session(clipboard)
         
         return response
         

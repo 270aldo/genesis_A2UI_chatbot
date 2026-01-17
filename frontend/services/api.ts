@@ -2,7 +2,11 @@ import { Attachment, GeminiResponse } from '../types';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export const generateContent = async (prompt: string, attachments: Attachment[] = []): Promise<GeminiResponse> => {
+export const generateContent = async (
+  prompt: string,
+  attachments: Attachment[] = [],
+  sessionId: string = 'default-session'
+): Promise<GeminiResponse> => {
   try {
     const sanitizedAttachments = attachments
       .filter((att) => att.type === 'image' && att.data && att.mimeType)
@@ -21,7 +25,7 @@ export const generateContent = async (prompt: string, attachments: Attachment[] 
       },
       body: JSON.stringify({
         message: prompt,
-        session_id: 'default-session',
+        session_id: sessionId,
         attachments: sanitizedAttachments
       }),
     });
