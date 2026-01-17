@@ -5,7 +5,8 @@ import {
   Pill, Flame, Activity, Heart, Waves, Dna, Apple,
   TrendingUp, TrendingDown, Lightbulb, Brain, Target,
   Sparkles, Timer, Trophy, PartyPopper, CircleDot,
-  Bone, ShieldAlert, Gauge, Calendar, Sun, Coffee
+  Bone, ShieldAlert, Gauge, Calendar, Sun, Coffee,
+  type LucideIcon
 } from 'lucide-react';
 import { GlassCard, AgentBadge, ProgressBar, ActionButton, GlassInput, GlassSlider } from './BaseUI';
 import { COLORS } from '../constants';
@@ -407,54 +408,59 @@ interface CycleAdjustmentProps {
   selfCareRecommendations: string[];
 }
 
+/**
+ * V3: Widget categories for accent colors.
+ * All widgets display as GENESIS but use category-specific accent colors.
+ */
+type WidgetCategory = 'training' | 'nutrition' | 'recovery' | 'habits' | 'analytics' | 'education' | 'general';
+
 type AgentMeta = {
   name: AgentType;
   color: string;
-  icon: any;
+  icon: LucideIcon;
 };
 
-const getAgentMeta = (agent?: AgentType, fallback: AgentType = 'GENESIS'): AgentMeta => {
-  const resolved = (agent || fallback).toUpperCase();
+/**
+ * V3: Always returns GENESIS identity with category-based accent color.
+ */
+const getAgentMeta = (_agent?: AgentType, category: WidgetCategory = 'general'): AgentMeta => {
+  const categoryColors: Record<WidgetCategory, string> = {
+    training: COLORS.training,
+    nutrition: COLORS.nutrition,
+    recovery: COLORS.recovery,
+    habits: COLORS.habits,
+    analytics: COLORS.analytics,
+    education: COLORS.education,
+    general: COLORS.genesis,
+  };
 
-  switch (resolved) {
-    // Original 5 agents
-    case 'BLAZE':
-      return { name: 'BLAZE', color: COLORS.blaze, icon: Zap };
-    case 'SAGE':
-      return { name: 'SAGE', color: COLORS.sage, icon: UtensilsCrossed };
-    case 'SPARK':
-      return { name: 'SPARK', color: COLORS.spark, icon: Flame };
-    case 'STELLA':
-      return { name: 'STELLA', color: COLORS.stella, icon: Brain };
-    case 'LOGOS':
-      return { name: 'LOGOS', color: COLORS.logos, icon: Lightbulb };
-    // New 7 agents (Phase 4)
-    case 'TEMPO':
-      return { name: 'TEMPO', color: COLORS.tempo, icon: Heart };
-    case 'ATLAS':
-      return { name: 'ATLAS', color: COLORS.atlas, icon: Bone };
-    case 'WAVE':
-      return { name: 'WAVE', color: COLORS.wave, icon: Waves };
-    case 'METABOL':
-      return { name: 'METABOL', color: COLORS.metabol, icon: Dna };
-    case 'MACRO':
-      return { name: 'MACRO', color: COLORS.macro, icon: Apple };
-    case 'NOVA':
-      return { name: 'NOVA', color: COLORS.nova, icon: Sparkles };
-    case 'LUNA':
-      return { name: 'LUNA', color: COLORS.luna, icon: Moon };
-    default:
-      return { name: 'GENESIS', color: COLORS.genesis, icon: Cpu };
-  }
+  const categoryIcons: Record<WidgetCategory, LucideIcon> = {
+    training: Zap,
+    nutrition: UtensilsCrossed,
+    recovery: Waves,
+    habits: Flame,
+    analytics: Brain,
+    education: Lightbulb,
+    general: Cpu,
+  };
+
+  return {
+    name: 'GENESIS',
+    color: categoryColors[category],
+    icon: categoryIcons[category],
+  };
 };
 
+/**
+ * V3: AgentCard always shows GENESIS badge with category accent color.
+ */
 const AgentCard: React.FC<{
   agent?: AgentType;
-  fallback: AgentType;
+  category?: WidgetCategory;
   className?: string;
   children: React.ReactNode;
-}> = ({ agent, fallback, className, children }) => {
-  const meta = getAgentMeta(agent, fallback);
+}> = ({ agent, category = 'general', className, children }) => {
+  const meta = getAgentMeta(agent, category);
 
   return (
     <GlassCard borderColor={meta.color} className={className}>
@@ -467,10 +473,10 @@ const AgentCard: React.FC<{
 // --- Widget Components ---
 
 export const ProgressDashboard: React.FC<{ data: DashboardProps; agent?: AgentType }> = ({ data, agent }) => {
-  const meta = getAgentMeta(agent, 'STELLA');
+  const meta = getAgentMeta(agent, 'analytics');
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-bold text-white text-sm">{data.title || 'Resumen'}</h3>
@@ -492,10 +498,10 @@ export const ProgressDashboard: React.FC<{ data: DashboardProps; agent?: AgentTy
 };
 
 export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'BLAZE');
+  const meta = getAgentMeta(agent, 'training');
 
   return (
-    <AgentCard agent={agent} fallback="BLAZE">
+    <AgentCard agent={agent} category="training">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-bold text-white">{data.title}</h3>
@@ -529,7 +535,7 @@ export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: stri
 };
 
 export const MealPlan: React.FC<{ data: MealPlanProps; agent?: AgentType }> = ({ data, agent }) => (
-  <AgentCard agent={agent} fallback="SAGE">
+  <AgentCard agent={agent} category="nutrition">
     <div className="flex justify-between items-center mb-3">
       <h3 className="font-bold text-white">Plan</h3>
       <span className="text-xs text-white/40">{data.totalKcal} kcal</span>
@@ -547,10 +553,10 @@ export const MealPlan: React.FC<{ data: MealPlanProps; agent?: AgentType }> = ({
 );
 
 export const HydrationTracker: React.FC<{ data: HydrationProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'SAGE');
+  const meta = getAgentMeta(agent, 'nutrition');
 
   return (
-    <AgentCard agent={agent} fallback="SAGE">
+    <AgentCard agent={agent} category="nutrition">
       <div className="flex justify-between items-end mb-3">
         <span className="text-[10px] font-bold text-white/40 uppercase">Hidratación</span>
         <div className="text-right">
@@ -568,7 +574,7 @@ export const HydrationTracker: React.FC<{ data: HydrationProps; onAction: (id: s
 };
 
 export const RecipeCard: React.FC<{ data: RecipeProps; agent?: AgentType }> = ({ data, agent }) => (
-  <AgentCard agent={agent} fallback="SAGE">
+  <AgentCard agent={agent} category="nutrition">
     <div className="mb-4">
       <div className="flex gap-2 mb-2 flex-wrap">
         {data.tags?.map((tag, i) => (
@@ -601,10 +607,10 @@ export const RecipeCard: React.FC<{ data: RecipeProps; agent?: AgentType }> = ({
 );
 
 export const SleepAnalysis: React.FC<{ data: SleepProps; agent?: AgentType }> = ({ data, agent }) => {
-  const meta = getAgentMeta(agent, 'STELLA');
+  const meta = getAgentMeta(agent, 'analytics');
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-white font-bold">Sleep Score</h3>
@@ -658,7 +664,7 @@ export const TimerWidget: React.FC<{ data: TimerProps; agent?: AgentType }> = ({
   };
 
   return (
-    <AgentCard agent={agent} fallback="BLAZE">
+    <AgentCard agent={agent} category="training">
       <div className="text-center py-4">
         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">{data.label}</p>
         <div className="text-5xl font-mono font-bold text-white mb-6 tabular-nums">
@@ -680,7 +686,7 @@ export const TimerWidget: React.FC<{ data: TimerProps; agent?: AgentType }> = ({
 };
 
 export const QuoteCard: React.FC<{ data: QuoteProps; agent?: AgentType }> = ({ data, agent }) => (
-  <AgentCard agent={agent} fallback="SPARK">
+  <AgentCard agent={agent} category="habits">
     <div className="text-center px-2 py-4">
       <p className="text-lg font-serif italic text-white/90 leading-relaxed mb-4">"{data.quote}"</p>
       <div className="w-8 h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent mx-auto mb-2" />
@@ -702,7 +708,7 @@ export const InsightCard: React.FC<{ data: InsightProps; agent?: AgentType }> = 
   const trendColor = trendConfig[trend].color;
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-white text-sm">{data.title}</h3>
@@ -731,7 +737,7 @@ export const InsightCard: React.FC<{ data: InsightProps; agent?: AgentType }> = 
 };
 
 export const SupplementStack: React.FC<{ data: SupplementProps; agent?: AgentType }> = ({ data, agent }) => (
-  <AgentCard agent={agent} fallback="SAGE">
+  <AgentCard agent={agent} category="nutrition">
     <h3 className="font-bold text-white text-sm mb-3">Daily Stack</h3>
     <div className="space-y-2">
       {data.items?.map((item, i) => (
@@ -760,7 +766,7 @@ export const ChecklistWidget: React.FC<{ data: ChecklistProps; agent?: AgentType
   };
 
   return (
-    <AgentCard agent={agent} fallback="SPARK">
+    <AgentCard agent={agent} category="habits">
       <h3 className="font-bold text-white text-sm mb-3">{data.title}</h3>
       <div className="space-y-2">
         {items.map((item, i) => (
@@ -790,7 +796,7 @@ export const ChecklistWidget: React.FC<{ data: ChecklistProps; agent?: AgentType
 export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const meta = getAgentMeta(agent, 'SPARK');
+  const meta = getAgentMeta(agent, 'habits');
 
   const handleChange = (id: string, value: string | number) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -803,7 +809,7 @@ export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: st
 
   if (submitted) {
     return (
-      <AgentCard agent={agent} fallback="SPARK">
+      <AgentCard agent={agent} category="habits">
         <div className="flex items-center gap-3 text-[#00FF88]">
           <CheckCircle2 size={24} />
           <p className="text-sm font-bold">Check-in Completado</p>
@@ -813,7 +819,7 @@ export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: st
   }
 
   return (
-    <AgentCard agent={agent} fallback="SPARK">
+    <AgentCard agent={agent} category="habits">
       <h3 className="font-bold text-white text-sm mb-1">Daily Check-in</h3>
       <p className="text-[10px] text-white/40 mb-4">{data.date}</p>
 
@@ -885,7 +891,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
   const [isFinished, setIsFinished] = useState(false);
-  const meta = getAgentMeta(agent, 'BLAZE');
+  const meta = getAgentMeta(agent, 'training');
 
   // Track all completed sets locally
   const [workoutLog, setWorkoutLog] = useState<ExerciseProgress[]>(
@@ -954,7 +960,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
 
   if (isFinished) {
     return (
-      <AgentCard agent={agent} fallback="BLAZE">
+      <AgentCard agent={agent} category="training">
         <div className="text-center py-6">
           <div className="text-4xl mb-2">🔥</div>
           <h2 className="text-xl font-bold text-white mb-2">¡Entrenamiento Completado!</h2>
@@ -965,7 +971,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
   }
 
   return (
-    <AgentCard agent={agent} fallback="BLAZE">
+    <AgentCard agent={agent} category="training">
 
       {/* Header Progress */}
       <div className="flex justify-between items-center mb-2">
@@ -1063,7 +1069,7 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
 // 14. Smart Grocery List
 export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [categories, setCategories] = useState(data.categories);
-  const meta = getAgentMeta(agent, 'SAGE');
+  const meta = getAgentMeta(agent, 'nutrition');
 
   const toggleItem = (catIdx: number, itemIdx: number) => {
     const newCats = [...categories];
@@ -1077,7 +1083,7 @@ export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction:
   };
 
   return (
-    <AgentCard agent={agent} fallback="SAGE">
+    <AgentCard agent={agent} category="nutrition">
       <h3 className="font-bold text-white mb-4">{data.title}</h3>
       
       <div className="space-y-6 mb-6">
@@ -1146,7 +1152,7 @@ export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAct
   };
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <h3 className="font-bold text-white mb-1">{data.title}</h3>
       <div className="flex gap-4 text-[10px] uppercase tracking-wider mb-4">
         <div className="flex items-center gap-1">
@@ -1231,7 +1237,7 @@ export const PlateCalculator: React.FC<{ data: PlateCalculatorProps; agent?: Age
   const plates = calculatePlates(weight);
 
   return (
-    <AgentCard agent={agent} fallback="BLAZE">
+    <AgentCard agent={agent} category="training">
       <h3 className="font-bold text-white text-sm mb-4">Calculadora de Carga</h3>
       
       <div className="flex items-center gap-4 mb-6 justify-center">
@@ -1268,7 +1274,7 @@ export const PlateCalculator: React.FC<{ data: PlateCalculatorProps; agent?: Age
 // 17. Habit Streak Flame (Gamification)
 export const HabitStreakFlame: React.FC<{ data: HabitStreakProps; agent?: AgentType }> = ({ data, agent }) => {
   return (
-    <AgentCard agent={agent} fallback="SPARK">
+    <AgentCard agent={agent} category="habits">
       <div className="text-center py-4">
         <div className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center">
           {/* Simple CSS-like flame layers */}
@@ -1288,7 +1294,7 @@ export const HabitStreakFlame: React.FC<{ data: HabitStreakProps; agent?: AgentT
 export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentType }> = ({ data, agent }) => {
   const [phase, setPhase] = useState<'Inhalar' | 'Sostener' | 'Exhalar'>('Inhalar');
   const [scale, setScale] = useState(1);
-  const meta = getAgentMeta(agent, 'STELLA');
+  const meta = getAgentMeta(agent, 'analytics');
   
   useEffect(() => {
     // 4-4-4 Box Breathing loop
@@ -1308,7 +1314,7 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentTyp
   }, []);
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <div className="h-48 flex flex-col items-center justify-center py-4 relative overflow-hidden">
         <div 
           className="w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-[4000ms] ease-in-out relative z-10"
@@ -1339,7 +1345,7 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentTyp
 export const MorningCheckin: React.FC<{ data: MorningCheckinProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const meta = getAgentMeta(agent, 'SPARK');
+  const meta = getAgentMeta(agent, 'habits');
 
   const handleChange = (id: string, value: string | number) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -1352,7 +1358,7 @@ export const MorningCheckin: React.FC<{ data: MorningCheckinProps; onAction: (id
 
   if (submitted) {
     return (
-      <AgentCard agent={agent} fallback="SPARK">
+      <AgentCard agent={agent} category="habits">
         <div className="text-center py-6">
           <Sun size={48} className="mx-auto mb-3" style={{ color: meta.color }} />
           <h3 className="text-lg font-bold text-white mb-1">¡Buenos días!</h3>
@@ -1363,7 +1369,7 @@ export const MorningCheckin: React.FC<{ data: MorningCheckinProps; onAction: (id
   }
 
   return (
-    <AgentCard agent={agent} fallback="SPARK">
+    <AgentCard agent={agent} category="habits">
       <div className="flex items-center gap-3 mb-4">
         <Sun size={24} style={{ color: meta.color }} />
         <div>
@@ -1419,7 +1425,7 @@ export const MorningCheckin: React.FC<{ data: MorningCheckinProps; onAction: (id
 
 // 20. Daily Briefing (GENESIS)
 export const DailyBriefing: React.FC<{ data: DailyBriefingProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'GENESIS');
+  const meta = getAgentMeta(agent, 'general');
 
   const iconMap: Record<string, any> = {
     workout: Zap,
@@ -1439,7 +1445,7 @@ export const DailyBriefing: React.FC<{ data: DailyBriefingProps; onAction: (id: 
   };
 
   return (
-    <AgentCard agent={agent} fallback="GENESIS">
+    <AgentCard agent={agent} category="general">
       <div className="mb-4">
         <h3 className="text-lg font-bold text-white">{data.greeting}</h3>
         <p className="text-[10px] text-white/40">{data.date}</p>
@@ -1480,7 +1486,7 @@ export const DailyBriefing: React.FC<{ data: DailyBriefingProps; onAction: (id: 
 export const RestTimer: React.FC<{ data: RestTimerProps; onAction?: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [timeLeft, setTimeLeft] = useState(data.seconds);
   const [isActive, setIsActive] = useState(data.autoStart ?? true);
-  const meta = getAgentMeta(agent, 'BLAZE');
+  const meta = getAgentMeta(agent, 'training');
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -1559,7 +1565,7 @@ export const RestTimer: React.FC<{ data: RestTimerProps; onAction?: (id: string,
 // 22. Workout Complete (BLAZE) - Celebration with stats
 export const WorkoutComplete: React.FC<{ data: WorkoutCompleteProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const [showConfetti, setShowConfetti] = useState(true);
-  const meta = getAgentMeta(agent, 'BLAZE');
+  const meta = getAgentMeta(agent, 'training');
 
   useEffect(() => {
     const timer = setTimeout(() => setShowConfetti(false), 5000);
@@ -1573,7 +1579,7 @@ export const WorkoutComplete: React.FC<{ data: WorkoutCompleteProps; onAction: (
   };
 
   return (
-    <AgentCard agent={agent} fallback="BLAZE">
+    <AgentCard agent={agent} category="training">
       {/* Confetti effect (CSS-based) */}
       {showConfetti && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1640,7 +1646,7 @@ export const PainReportInline: React.FC<{ data: PainReportInlineProps; onAction:
   const [painLevel, setPainLevel] = useState(data.painLevel || 5);
   const [bodyZone, setBodyZone] = useState(data.bodyZone || '');
   const [submitted, setSubmitted] = useState(false);
-  const meta = getAgentMeta(agent, 'ATLAS');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const zones = ['lower_back', 'upper_back', 'shoulders', 'knees', 'hips', 'neck', 'wrists', 'elbows'];
   const zoneLabels: Record<string, string> = {
@@ -1666,7 +1672,7 @@ export const PainReportInline: React.FC<{ data: PainReportInlineProps; onAction:
 
   if (submitted) {
     return (
-      <AgentCard agent={agent} fallback="ATLAS">
+      <AgentCard agent={agent} category="recovery">
         <div className="flex items-center gap-3">
           <ShieldAlert size={24} style={{ color: meta.color }} />
           <div>
@@ -1679,7 +1685,7 @@ export const PainReportInline: React.FC<{ data: PainReportInlineProps; onAction:
   }
 
   return (
-    <AgentCard agent={agent} fallback="ATLAS">
+    <AgentCard agent={agent} category="recovery">
       <div className="flex items-center gap-2 mb-4">
         <ShieldAlert size={20} style={{ color: meta.color }} />
         <h3 className="font-bold text-white text-sm">¿Sientes molestia?</h3>
@@ -1730,7 +1736,7 @@ export const PainReportInline: React.FC<{ data: PainReportInlineProps; onAction:
 
 // 24. Safe Variant (ATLAS)
 export const SafeVariant: React.FC<{ data: SafeVariantProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'ATLAS');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const safetyColors = {
     green: '#00FF88',
@@ -1739,7 +1745,7 @@ export const SafeVariant: React.FC<{ data: SafeVariantProps; onAction: (id: stri
   };
 
   return (
-    <AgentCard agent={agent} fallback="ATLAS">
+    <AgentCard agent={agent} category="recovery">
       <div className="mb-4">
         <p className="text-[10px] text-white/40 uppercase mb-1">Alternativas seguras para</p>
         <h3 className="text-lg font-bold text-white">{data.originalExercise}</h3>
@@ -1778,10 +1784,10 @@ export const SafeVariant: React.FC<{ data: SafeVariantProps; onAction: (id: stri
 
 // 25. Pre-Workout Fuel (MACRO)
 export const PreWorkoutFuel: React.FC<{ data: PreWorkoutFuelProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'MACRO');
+  const meta = getAgentMeta(agent, 'nutrition');
 
   return (
-    <AgentCard agent={agent} fallback="MACRO">
+    <AgentCard agent={agent} category="nutrition">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Coffee size={20} style={{ color: meta.color }} />
@@ -1828,7 +1834,7 @@ export const PreWorkoutFuel: React.FC<{ data: PreWorkoutFuelProps; onAction: (id
 
 // 26. Post-Workout Window (MACRO)
 export const PostWorkoutWindow: React.FC<{ data: PostWorkoutWindowProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'MACRO');
+  const meta = getAgentMeta(agent, 'nutrition');
   const remainingTime = data.optimalWindow - data.minutesSinceWorkout;
   const urgencyLevel = remainingTime < 15 ? 'high' : remainingTime < 30 ? 'medium' : 'low';
 
@@ -1839,7 +1845,7 @@ export const PostWorkoutWindow: React.FC<{ data: PostWorkoutWindowProps; onActio
   };
 
   return (
-    <AgentCard agent={agent} fallback="MACRO">
+    <AgentCard agent={agent} category="nutrition">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Timer size={20} style={{ color: urgencyColors[urgencyLevel] }} />
@@ -1893,7 +1899,7 @@ export const PostWorkoutWindow: React.FC<{ data: PostWorkoutWindowProps; onActio
 
 // 27. Hydration Reminder (MACRO) - Floating widget
 export const HydrationReminder: React.FC<{ data: HydrationReminderProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'MACRO');
+  const meta = getAgentMeta(agent, 'nutrition');
   const progress = (data.consumed / data.targetLiters) * 100;
 
   return (
@@ -1945,7 +1951,7 @@ export const HydrationReminder: React.FC<{ data: HydrationReminderProps; onActio
 
 // 28. Recovery Score (WAVE)
 export const RecoveryScore: React.FC<{ data: RecoveryScoreProps; onAction?: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
-  const meta = getAgentMeta(agent, 'WAVE');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const statusColors = {
     excellent: '#00FF88',
@@ -1970,7 +1976,7 @@ export const RecoveryScore: React.FC<{ data: RecoveryScoreProps; onAction?: (id:
   };
 
   return (
-    <AgentCard agent={agent} fallback="WAVE">
+    <AgentCard agent={agent} category="recovery">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-white">Recovery Score</h3>
@@ -2027,7 +2033,7 @@ export const RecoveryScore: React.FC<{ data: RecoveryScoreProps; onAction?: (id:
 
 // STELLA - ProgressInsight
 export const ProgressInsight: React.FC<{ data: ProgressInsightProps; agent?: AgentType }> = ({ data, agent }) => {
-  const meta = getAgentMeta(agent, 'STELLA');
+  const meta = getAgentMeta(agent, 'analytics');
 
   const trendIcons = {
     positive: TrendingUp,
@@ -2043,7 +2049,7 @@ export const ProgressInsight: React.FC<{ data: ProgressInsightProps; agent?: Age
   };
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-bold text-white">{data.title}</h3>
         <div
@@ -2098,7 +2104,7 @@ export const ProgressInsight: React.FC<{ data: ProgressInsightProps; agent?: Age
 
 // STELLA - WeeklySummary
 export const WeeklySummary: React.FC<{ data: WeeklySummaryProps; agent?: AgentType }> = ({ data, agent }) => {
-  const meta = getAgentMeta(agent, 'STELLA');
+  const meta = getAgentMeta(agent, 'analytics');
 
   const trendIcons: Record<string, React.ReactNode> = {
     up: <TrendingUp size={10} className="text-green-400" />,
@@ -2109,7 +2115,7 @@ export const WeeklySummary: React.FC<{ data: WeeklySummaryProps; agent?: AgentTy
   const scoreColor = data.overallScore >= 80 ? '#00FF88' : data.overallScore >= 60 ? '#FFB800' : '#FF4444';
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-white">Semana {data.weekNumber}</h3>
@@ -2183,7 +2189,7 @@ export const PRCelebration: React.FC<{ data: PRCelebrationProps; agent?: AgentTy
   }, []);
 
   return (
-    <AgentCard agent={agent} fallback="STELLA">
+    <AgentCard agent={agent} category="analytics">
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
           {[...Array(20)].map((_, i) => (
@@ -2246,7 +2252,7 @@ export const PRCelebration: React.FC<{ data: PRCelebrationProps; agent?: AgentTy
 
 // WAVE - HRVTrend
 export const HRVTrend: React.FC<{ data: HRVTrendProps; agent?: AgentType }> = ({ data, agent }) => {
-  const meta = getAgentMeta(agent, 'WAVE');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const trendColors = {
     improving: '#00FF88',
@@ -2263,7 +2269,7 @@ export const HRVTrend: React.FC<{ data: HRVTrendProps; agent?: AgentType }> = ({
   const maxHRV = Math.max(...data.history.map(h => h.value), data.baseline * 1.2);
 
   return (
-    <AgentCard agent={agent} fallback="WAVE">
+    <AgentCard agent={agent} category="recovery">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-white">HRV Trend</h3>
@@ -2313,7 +2319,7 @@ export const HRVTrend: React.FC<{ data: HRVTrendProps; agent?: AgentType }> = ({
 
 // WAVE - DeloadSuggestion
 export const DeloadSuggestion: React.FC<{ data: DeloadSuggestionProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
-  const meta = getAgentMeta(agent, 'WAVE');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const statusColors = {
     elevated: '#FF4444',
@@ -2322,7 +2328,7 @@ export const DeloadSuggestion: React.FC<{ data: DeloadSuggestionProps; agent?: A
   };
 
   return (
-    <AgentCard agent={agent} fallback="WAVE">
+    <AgentCard agent={agent} category="recovery">
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-full bg-yellow-500/20">
           <AlertTriangle size={20} className="text-yellow-400" />
@@ -2389,7 +2395,7 @@ export const DeloadSuggestion: React.FC<{ data: DeloadSuggestionProps; agent?: A
 
 // TEMPO - CardioSessionTracker
 export const CardioSessionTracker: React.FC<{ data: CardioSessionTrackerProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
-  const meta = getAgentMeta(agent, 'TEMPO');
+  const meta = getAgentMeta(agent, 'training');
   const progress = (data.currentDuration / data.targetDuration) * 100;
 
   const isInTargetZone = data.currentHeartRate
@@ -2397,7 +2403,7 @@ export const CardioSessionTracker: React.FC<{ data: CardioSessionTrackerProps; a
     : true;
 
   return (
-    <AgentCard agent={agent} fallback="TEMPO">
+    <AgentCard agent={agent} category="training">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-white capitalize">{data.type.replace('-', ' ')}</h3>
@@ -2466,7 +2472,7 @@ export const CardioSessionTracker: React.FC<{ data: CardioSessionTrackerProps; a
 
 // TEMPO - HIITIntervalTracker
 export const HIITIntervalTracker: React.FC<{ data: HIITIntervalTrackerProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
-  const meta = getAgentMeta(agent, 'TEMPO');
+  const meta = getAgentMeta(agent, 'training');
 
   const phaseColors = {
     work: '#FF4444',
@@ -2481,7 +2487,7 @@ export const HIITIntervalTracker: React.FC<{ data: HIITIntervalTrackerProps; age
   };
 
   return (
-    <AgentCard agent={agent} fallback="TEMPO">
+    <AgentCard agent={agent} category="training">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-white">{data.title}</h3>
         <span className="text-sm font-bold" style={{ color: meta.color }}>
@@ -2538,7 +2544,7 @@ export const HIITIntervalTracker: React.FC<{ data: HIITIntervalTrackerProps; age
 
 // LUNA - CycleTracker
 export const CycleTracker: React.FC<{ data: CycleTrackerProps; agent?: AgentType; onAction: (id: string, data: any) => void }> = ({ data, agent, onAction }) => {
-  const meta = getAgentMeta(agent, 'LUNA');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const phaseColors: Record<string, string> = {
     menstrual: '#FF6B6B',
@@ -2550,7 +2556,7 @@ export const CycleTracker: React.FC<{ data: CycleTrackerProps; agent?: AgentType
   const currentPhaseColor = phaseColors[data.currentPhase] || meta.color;
 
   return (
-    <AgentCard agent={agent} fallback="LUNA">
+    <AgentCard agent={agent} category="recovery">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-white">Cycle Tracker</h3>
@@ -2623,7 +2629,7 @@ export const CycleTracker: React.FC<{ data: CycleTrackerProps; agent?: AgentType
 
 // LUNA - CycleAdjustment
 export const CycleAdjustment: React.FC<{ data: CycleAdjustmentProps; agent?: AgentType }> = ({ data, agent }) => {
-  const meta = getAgentMeta(agent, 'LUNA');
+  const meta = getAgentMeta(agent, 'recovery');
 
   const phaseColors: Record<string, string> = {
     menstrual: '#FF6B6B',
@@ -2645,7 +2651,7 @@ export const CycleAdjustment: React.FC<{ data: CycleAdjustmentProps; agent?: Age
   };
 
   return (
-    <AgentCard agent={agent} fallback="LUNA">
+    <AgentCard agent={agent} category="recovery">
       <div className="flex items-center gap-3 mb-4">
         <div
           className="p-2 rounded-full"
@@ -2746,91 +2752,94 @@ interface A2UIMediatorProps {
 export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction, agent }) => {
   if (!payload || !payload.type) return null;
 
+  // Type assertion helper - props come from backend and are validated at runtime
+  const props = payload.props as Record<string, any>;
+
   switch (payload.type) {
     case 'progress-dashboard':
-      return <ProgressDashboard data={payload.props} agent={agent} />;
+      return <ProgressDashboard data={props as DashboardProps} agent={agent} />;
     case 'workout-card':
-      return <WorkoutCard data={payload.props} onAction={onAction} agent={agent} />;
+      return <WorkoutCard data={props as WorkoutCardProps} onAction={onAction} agent={agent} />;
     case 'meal-plan':
-      return <MealPlan data={payload.props} agent={agent} />;
+      return <MealPlan data={props as MealPlanProps} agent={agent} />;
     case 'hydration-tracker':
-      return <HydrationTracker data={payload.props} onAction={onAction} agent={agent} />;
+      return <HydrationTracker data={props as HydrationProps} onAction={onAction} agent={agent} />;
     case 'recipe-card':
-      return <RecipeCard data={payload.props} agent={agent} />;
+      return <RecipeCard data={props as RecipeProps} agent={agent} />;
     case 'sleep-analysis':
-      return <SleepAnalysis data={payload.props} agent={agent} />;
+      return <SleepAnalysis data={props as SleepProps} agent={agent} />;
     case 'timer-widget':
-      return <TimerWidget data={payload.props} agent={agent} />;
+      return <TimerWidget data={props as TimerProps} agent={agent} />;
     case 'quote-card':
-      return <QuoteCard data={payload.props} agent={agent} />;
+      return <QuoteCard data={props as QuoteProps} agent={agent} />;
     case 'insight-card':
-      return <InsightCard data={payload.props} agent={agent} />;
+      return <InsightCard data={props as InsightProps} agent={agent} />;
     case 'checklist':
-      return <ChecklistWidget data={payload.props} agent={agent} />;
+      return <ChecklistWidget data={props as ChecklistProps} agent={agent} />;
     case 'supplement-stack':
-      return <SupplementStack data={payload.props} agent={agent} />;
+      return <SupplementStack data={props as SupplementProps} agent={agent} />;
     case 'daily-checkin':
-      return <DailyCheckIn data={payload.props} onAction={onAction} agent={agent} />;
+      return <DailyCheckIn data={props as DailyCheckInProps} onAction={onAction} agent={agent} />;
     case 'quick-actions':
-      return <QuickActions data={payload.props} onAction={onAction} />;
+      return <QuickActions data={props as QuickActionsProps} onAction={onAction} />;
     case 'live-session-tracker':
-      return <LiveSessionTracker data={payload.props} onAction={onAction} agent={agent} />;
+      return <LiveSessionTracker data={props as LiveSessionProps} onAction={onAction} agent={agent} />;
     case 'smart-grocery-list':
-      return <SmartGroceryList data={payload.props} onAction={onAction} agent={agent} />;
+      return <SmartGroceryList data={props as SmartGroceryListProps} onAction={onAction} agent={agent} />;
     case 'body-comp-visualizer':
-      return <BodyCompVisualizer data={payload.props} onAction={onAction} agent={agent} />;
+      return <BodyCompVisualizer data={props as BodyCompVisualizerProps} onAction={onAction} agent={agent} />;
     case 'plate-calculator':
-      return <PlateCalculator data={payload.props} agent={agent} />;
+      return <PlateCalculator data={props as PlateCalculatorProps} agent={agent} />;
     case 'habit-streak':
-      return <HabitStreakFlame data={payload.props} agent={agent} />;
+      return <HabitStreakFlame data={props as HabitStreakProps} agent={agent} />;
     case 'breathwork-guide':
-      return <BreathworkGuide data={payload.props} agent={agent} />;
+      return <BreathworkGuide data={props as BreathworkProps} agent={agent} />;
     case 'alert-banner':
-      return <AlertBanner data={payload.props} />;
+      return <AlertBanner data={props as AlertProps} />;
     // Phase 5 - Happy Path Widgets
     case 'morning-checkin':
-      return <MorningCheckin data={payload.props} onAction={onAction} agent={agent} />;
+      return <MorningCheckin data={props as MorningCheckinProps} onAction={onAction} agent={agent} />;
     case 'daily-briefing':
-      return <DailyBriefing data={payload.props} agent={agent} />;
+      return <DailyBriefing data={props as DailyBriefingProps} onAction={onAction} agent={agent} />;
     case 'rest-timer':
-      return <RestTimer data={payload.props} agent={agent} />;
+      return <RestTimer data={props as RestTimerProps} agent={agent} />;
     case 'workout-complete':
-      return <WorkoutComplete data={payload.props} onAction={onAction} agent={agent} />;
+      return <WorkoutComplete data={props as WorkoutCompleteProps} onAction={onAction} agent={agent} />;
     case 'pain-report-inline':
-      return <PainReportInline data={payload.props} onAction={onAction} agent={agent} />;
+      return <PainReportInline data={props as PainReportInlineProps} onAction={onAction} agent={agent} />;
     case 'safe-variant':
-      return <SafeVariant data={payload.props} onAction={onAction} agent={agent} />;
+      return <SafeVariant data={props as SafeVariantProps} onAction={onAction} agent={agent} />;
     case 'pre-workout-fuel':
-      return <PreWorkoutFuel data={payload.props} agent={agent} />;
+      return <PreWorkoutFuel data={props as PreWorkoutFuelProps} onAction={onAction} agent={agent} />;
     case 'post-workout-window':
-      return <PostWorkoutWindow data={payload.props} onAction={onAction} agent={agent} />;
+      return <PostWorkoutWindow data={props as PostWorkoutWindowProps} onAction={onAction} agent={agent} />;
     case 'hydration-reminder':
-      return <HydrationReminder data={payload.props} onAction={onAction} agent={agent} />;
+      return <HydrationReminder data={props as HydrationReminderProps} onAction={onAction} agent={agent} />;
     case 'recovery-score':
-      return <RecoveryScore data={payload.props} agent={agent} />;
+      return <RecoveryScore data={props as RecoveryScoreProps} agent={agent} />;
     // Phase 7 - Advanced Widgets
     // STELLA - Analytics
     case 'progress-insight':
-      return <ProgressInsight data={payload.props} agent={agent} />;
+      return <ProgressInsight data={props as ProgressInsightProps} agent={agent} />;
     case 'weekly-summary':
-      return <WeeklySummary data={payload.props} agent={agent} />;
+      return <WeeklySummary data={props as WeeklySummaryProps} agent={agent} />;
     case 'pr-celebration':
-      return <PRCelebration data={payload.props} agent={agent} />;
+      return <PRCelebration data={props as PRCelebrationProps} onAction={onAction} agent={agent} />;
     // WAVE - Recovery
     case 'hrv-trend':
-      return <HRVTrend data={payload.props} agent={agent} />;
+      return <HRVTrend data={props as HRVTrendProps} agent={agent} />;
     case 'deload-suggestion':
-      return <DeloadSuggestion data={payload.props} onAction={onAction} agent={agent} />;
+      return <DeloadSuggestion data={props as DeloadSuggestionProps} onAction={onAction} agent={agent} />;
     // TEMPO - Cardio
     case 'cardio-session-tracker':
-      return <CardioSessionTracker data={payload.props} onAction={onAction} agent={agent} />;
+      return <CardioSessionTracker data={props as CardioSessionTrackerProps} onAction={onAction} agent={agent} />;
     case 'hiit-interval-tracker':
-      return <HIITIntervalTracker data={payload.props} onAction={onAction} agent={agent} />;
+      return <HIITIntervalTracker data={props as HIITIntervalTrackerProps} onAction={onAction} agent={agent} />;
     // LUNA - Hormonal/Cycle
     case 'cycle-tracker':
-      return <CycleTracker data={payload.props} agent={agent} />;
+      return <CycleTracker data={props as CycleTrackerProps} onAction={onAction} agent={agent} />;
     case 'cycle-adjustment':
-      return <CycleAdjustment data={payload.props} agent={agent} />;
+      return <CycleAdjustment data={props as CycleAdjustmentProps} agent={agent} />;
     default:
       return null;
   }

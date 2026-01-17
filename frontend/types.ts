@@ -1,3 +1,10 @@
+/**
+ * GENESIS V3 Types
+ *
+ * V3 uses unified GENESIS identity - all responses come from "GENESIS".
+ * Widget types remain for A2UI rendering but are categorized, not agent-specific.
+ */
+
 export interface Attachment {
   type: 'image';
   url: string;
@@ -7,112 +14,101 @@ export interface Attachment {
   size?: number;
 }
 
-// Legacy type - use AgentId from contracts for new code
-export type AgentType =
-  | 'GENESIS'  // Orchestrator
-  | 'BLAZE'    // Strength training
-  | 'TEMPO'    // Cardio/HIIT
-  | 'ATLAS'    // Mobility/Pain
-  | 'WAVE'     // Recovery/HRV
-  | 'SAGE'     // Nutrition strategy
-  | 'METABOL'  // Metabolic health
-  | 'MACRO'    // Nutrition tracking
-  | 'NOVA'     // Supplements
-  | 'SPARK'    // Habits/Mindset
-  | 'STELLA'   // Analytics
-  | 'LUNA'     // Hormonal/Cycle
-  | 'LOGOS';   // Education
+/**
+ * V3: Single unified agent identity.
+ * All backend responses use "GENESIS" regardless of which CORE processed it.
+ */
+export type AgentType = 'GENESIS';
 
-// Legacy WidgetPayload - for backward compatibility
-// New code should use validated payloads from contracts/WidgetContract.ts
+/**
+ * Widget categories for color mapping.
+ */
+export type WidgetCategory =
+  | 'training'
+  | 'nutrition'
+  | 'recovery'
+  | 'habits'
+  | 'analytics'
+  | 'education';
+
+/**
+ * All supported widget types organized by category.
+ */
+export type WidgetType =
+  // Training widgets
+  | 'workout-card'
+  | 'live-session-tracker'
+  | 'workout-complete'
+  | 'rest-timer'
+  | 'timer-widget'
+  | 'plate-calculator'
+  | 'cardio-session-tracker'
+  | 'hiit-interval-tracker'
+  | 'heart-rate-zone'
+  | 'equipment-recognition'
+  | 'form-analysis'
+  // Nutrition widgets
+  | 'meal-plan'
+  | 'recipe-card'
+  | 'smart-grocery-list'
+  | 'hydration-reminder'
+  | 'hydration-tracker'
+  | 'pre-workout-fuel'
+  | 'post-workout-window'
+  | 'quick-meal-log'
+  | 'macro-tracker'
+  | 'meal-photo-analysis'
+  | 'supplement-stack'
+  | 'supplement-timing'
+  | 'interaction-checker'
+  | 'supplement-recommendation'
+  // Recovery widgets
+  | 'recovery-score'
+  | 'hrv-trend'
+  | 'deload-suggestion'
+  | 'sleep-analysis'
+  | 'pain-report-inline'
+  | 'safe-variant'
+  | 'mobility-routine'
+  | 'body-map'
+  | 'cycle-tracker'
+  | 'cycle-adjustment'
+  | 'hormonal-insights'
+  // Habits widgets
+  | 'morning-checkin'
+  | 'daily-checkin'
+  | 'checklist'
+  | 'habit-streak'
+  | 'habit-tracker'
+  | 'breathwork-guide'
+  | 'breathwork-cooldown'
+  | 'focus-ritual'
+  | 'quote-card'
+  | 'quick-actions'
+  // Analytics widgets
+  | 'progress-insight'
+  | 'progress-dashboard'
+  | 'weekly-summary'
+  | 'pr-celebration'
+  | 'body-comp-visualizer'
+  | 'insight-card'
+  // General widgets
+  | 'daily-briefing'
+  | 'phase-transition'
+  | 'season-review'
+  | 'next-season-proposal'
+  | 'alert-banner'
+  // Education widgets
+  | 'micro-learning'
+  | 'educational-prompt'
+  | 'why-this-works';
+
+/**
+ * Widget payload for A2UI rendering.
+ */
 export interface WidgetPayload {
-  type:
-    // SPARK widgets
-    | 'morning-checkin'
-    | 'focus-ritual'
-    | 'breathwork-cooldown'
-    | 'habit-tracker'
-    | 'daily-checkin'
-    | 'checklist'
-    | 'habit-streak'
-    | 'breathwork-guide'
-    | 'quote-card'
-
-    // GENESIS widgets
-    | 'daily-briefing'
-    | 'phase-transition'
-    | 'season-review'
-    | 'next-season-proposal'
-    | 'quick-actions'
-    | 'alert-banner'
-
-    // BLAZE widgets
-    | 'workout-card'
-    | 'live-session-tracker'
-    | 'workout-complete'
-    | 'rest-timer'
-    | 'equipment-recognition'
-    | 'form-analysis'
-    | 'timer-widget'
-    | 'plate-calculator'
-
-    // TEMPO widgets
-    | 'cardio-session-tracker'
-    | 'hiit-interval-tracker'
-    | 'heart-rate-zone'
-
-    // ATLAS widgets
-    | 'pain-report-inline'
-    | 'safe-variant'
-    | 'mobility-routine'
-    | 'body-map'
-
-    // WAVE widgets
-    | 'recovery-score'
-    | 'hrv-trend'
-    | 'deload-suggestion'
-    | 'sleep-analysis'
-
-    // SAGE widgets
-    | 'meal-plan'
-    | 'recipe-card'
-    | 'smart-grocery-list'
-
-    // MACRO widgets
-    | 'hydration-reminder'
-    | 'hydration-tracker'
-    | 'pre-workout-fuel'
-    | 'post-workout-window'
-    | 'quick-meal-log'
-    | 'macro-tracker'
-    | 'meal-photo-analysis'
-
-    // NOVA widgets
-    | 'supplement-stack'
-    | 'supplement-timing'
-    | 'interaction-checker'
-    | 'supplement-recommendation'
-
-    // STELLA widgets
-    | 'progress-insight'
-    | 'progress-dashboard'
-    | 'weekly-summary'
-    | 'pr-celebration'
-    | 'body-comp-visualizer'
-    | 'insight-card'
-
-    // LUNA widgets
-    | 'cycle-tracker'
-    | 'cycle-adjustment'
-    | 'hormonal-insights'
-
-    // LOGOS widgets
-    | 'micro-learning'
-    | 'educational-prompt'
-    | 'why-this-works';
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  props: any;
+  type: WidgetType;
+  props: Record<string, unknown>;
 }
 
 export interface Message {

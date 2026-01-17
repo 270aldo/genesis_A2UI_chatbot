@@ -46,58 +46,74 @@ export const AgentBadge: React.FC<AgentBadgeProps> = ({ name, color, icon: Icon 
 );
 
 interface ProgressBarProps {
-  value: number;
-  max: number;
+  value?: number;
+  max?: number;
+  progress?: number; // Alternative: 0-100 percentage
   color?: string;
   height?: number;
 }
 
-export const ProgressBar: React.FC<ProgressBarProps> = ({ 
-  value, 
-  max, 
-  color = COLORS.genesis, 
-  height = 6 
-}) => (
-  <div className="w-full bg-white/10 rounded-full overflow-hidden" style={{ height }}>
-    <div 
-      className="h-full rounded-full transition-all duration-500" 
-      style={{ 
-        width: `${Math.min((value / max) * 100, 100)}%`, 
-        background: color 
-      }} 
-    />
-  </div>
-);
+export const ProgressBar: React.FC<ProgressBarProps> = ({
+  value,
+  max = 100,
+  progress,
+  color = COLORS.genesis,
+  height = 6
+}) => {
+  // Support both value/max and progress (0-100) props
+  const percentage = progress !== undefined
+    ? Math.min(progress, 100)
+    : value !== undefined
+      ? Math.min((value / max) * 100, 100)
+      : 0;
+
+  return (
+    <div className="w-full bg-white/10 rounded-full overflow-hidden" style={{ height }}>
+      <div
+        className="h-full rounded-full transition-all duration-500"
+        style={{
+          width: `${percentage}%`,
+          background: color
+        }}
+      />
+    </div>
+  );
+};
 
 interface ActionButtonProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  label?: string; // Alternative to children
   color?: string;
   onClick: () => void;
   variant?: 'primary' | 'secondary';
   className?: string;
+  disabled?: boolean;
 }
 
-export const ActionButton: React.FC<ActionButtonProps> = ({ 
-  children, 
-  color = COLORS.genesis, 
-  onClick, 
+export const ActionButton: React.FC<ActionButtonProps> = ({
+  children,
+  label,
+  color = COLORS.genesis,
+  onClick,
   variant = 'primary',
-  className = ""
+  className = '',
+  disabled = false
 }) => (
-  <button 
-    onClick={onClick} 
+  <button
+    onClick={onClick}
+    disabled={disabled}
     className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-      variant === 'primary' 
-        ? 'text-white hover:opacity-90 shadow-lg' 
+      variant === 'primary'
+        ? 'text-white hover:opacity-90 shadow-lg'
         : 'bg-white/5 text-white/60 hover:bg-white/10'
-    } ${className}`} 
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
     style={
-      variant === 'primary' 
-        ? { background: `linear-gradient(135deg, ${color}, ${color}CC)` } 
+      variant === 'primary'
+        ? { background: `linear-gradient(135deg, ${color}, ${color}CC)` }
         : {}
     }
   >
-    {children}
+    {children || label}
   </button>
 );
 

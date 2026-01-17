@@ -12,24 +12,14 @@
 import { z } from 'zod';
 
 // ============================================
-// AGENT IDS (Exhaustive list - no exceptions)
+// AGENT ID (V3: Unified identity)
 // ============================================
 
-export const AgentIdSchema = z.enum([
-  'GENESIS',  // Orchestrator - the only conversational agent
-  'BLAZE',    // Strength training
-  'TEMPO',    // Cardio/HIIT
-  'ATLAS',    // Mobility/Pain
-  'WAVE',     // Recovery/HRV
-  'SAGE',     // Nutrition strategy
-  'METABOL',  // Metabolic health
-  'MACRO',    // Nutrition tracking
-  'NOVA',     // Supplements
-  'SPARK',    // Habits/Mindset
-  'STELLA',   // Analytics
-  'LUNA',     // Hormonal/Cycle
-  'LOGOS',    // Education
-]);
+/**
+ * V3: All responses come from GENESIS.
+ * Internal CORES are invisible to the user.
+ */
+export const AgentIdSchema = z.literal('GENESIS');
 
 export type AgentId = z.infer<typeof AgentIdSchema>;
 
