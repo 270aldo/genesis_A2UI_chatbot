@@ -45,6 +45,28 @@ resource "google_secret_manager_secret" "supabase_service_key" {
   }
 }
 
+# Supabase JWT Secret (backend auth validation)
+resource "google_secret_manager_secret" "supabase_jwt_secret" {
+  secret_id = "supabase-jwt-secret"
+
+  labels = var.labels
+
+  replication {
+    auto {}
+  }
+}
+
+# Sync API Key (optional fallback for internal jobs)
+resource "google_secret_manager_secret" "sync_api_key" {
+  secret_id = "sync-api-key"
+
+  labels = var.labels
+
+  replication {
+    auto {}
+  }
+}
+
 # Wearable OAuth Secrets (for Phase 3)
 
 # Garmin OAuth 2.0 Credentials
@@ -117,3 +139,5 @@ resource "google_secret_manager_secret" "whoop_client_secret" {
 # echo -n "https://your-project.supabase.co" | gcloud secrets versions add supabase-url --data-file=-
 # echo -n "your-supabase-anon-key" | gcloud secrets versions add supabase-anon-key --data-file=-
 # echo -n "your-supabase-service-key" | gcloud secrets versions add supabase-service-key --data-file=-
+# echo -n "your-supabase-jwt-secret" | gcloud secrets versions add supabase-jwt-secret --data-file=-
+# echo -n "your-sync-api-key" | gcloud secrets versions add sync-api-key --data-file=-

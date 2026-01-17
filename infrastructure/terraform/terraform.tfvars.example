@@ -33,6 +33,7 @@ cloud_tasks_queue_name    = "genesis-wearables-sync"
 cloud_tasks_location      = "us-central1"
 cloud_tasks_service_account = ""
 
+
 # Optional: Custom labels
 labels = {
   project     = "ngx-genesis"
