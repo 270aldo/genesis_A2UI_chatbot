@@ -10,7 +10,7 @@ Features:
 - Tool calling for widget generation
 - Voice Activity Detection (VAD)
 
-Model: gemini-2.0-flash-exp
+Model: gemini-2.5-flash-native-audio-preview-12-2025
 Voice: Puck (neutral, works well for ES/EN)
 """
 
@@ -112,8 +112,8 @@ class GeminiLiveClient:
     and processes tool calls for widget generation.
     """
 
-    # Model for live audio streaming (Gemini 2.0 Live API)
-    MODEL = "gemini-2.0-flash-exp"
+    # Model for live audio streaming (Gemini Native Audio)
+    MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
 
     # Voice configuration
     DEFAULT_VOICE = "Puck"  # Neutral voice, good for ES/EN
@@ -161,13 +161,18 @@ class GeminiLiveClient:
 
         voice = voice_name or self.DEFAULT_VOICE
 
+        # Configuration per official Google documentation
         config = {
-            "response_modalities": ["AUDIO", "TEXT"],
-            "tools": [VOICE_WIDGET_TOOL],
-            "speech_config": {
-                "voice_config": {"prebuilt_voice_config": {"voice_name": voice}}
-            },
+            "response_modalities": ["AUDIO"],
             "system_instruction": system_instruction,
+            "speech_config": {
+                "voice_config": {
+                    "prebuilt_voice_config": {
+                        "voice_name": voice
+                    }
+                }
+            },
+            "tools": [VOICE_WIDGET_TOOL],
         }
 
         try:
