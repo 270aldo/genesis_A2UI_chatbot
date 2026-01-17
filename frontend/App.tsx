@@ -9,6 +9,7 @@ import { generateContent, API_URL } from './services/api';
 import { Sidebar } from './components/Sidebar';
 import { VoiceMode, VoiceButton } from './components/voice';
 import { v4 as uuid } from 'uuid';
+import { supabase } from './services/supabase';
 
 const getOrCreateLocalId = (key: string, prefix: string) => {
   try {
@@ -37,7 +38,7 @@ const MOCK_SESSIONS: Session[] = [
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
   const [currentSessionId, setCurrentSessionId] = useState<string>('1');
-  const [currentUserId] = useState<string>(() => getOrCreateLocalId('ngx_user_id', 'user'));
+  const [currentUserId, setCurrentUserId] = useState<string>(() => getOrCreateLocalId('ngx_user_id', 'user'));
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -50,6 +51,39 @@ const App: React.FC = () => {
 
   // Initialize telemetry service
   useTelemetry({ debug: import.meta.env.DEV });
+
+  // Keep user id in sync with Supabase auth (if available)
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncUser = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const user = data.session?.user;
+        if (user && isMounted) {
+          localStorage.setItem('ngx_user_id', user.id);
+          setCurrentUserId(user.id);
+        }
+      } catch {
+        // ignore auth errors
+      }
+    };
+
+    syncUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      if (user) {
+        localStorage.setItem('ngx_user_id', user.id);
+        setCurrentUserId(user.id);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Attention budget and widget queue
   const {

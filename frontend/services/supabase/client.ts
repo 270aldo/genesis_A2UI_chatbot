@@ -30,7 +30,12 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
 
 // Helper to get current user ID (anonymous for now)
 export const getCurrentUserId = (): string => {
-  // TODO: Replace with actual auth when implemented
+  try {
+    const stored = localStorage.getItem('ngx_user_id');
+    if (stored) return stored;
+  } catch {
+    // ignore storage access errors
+  }
   return 'anonymous-user';
 };
 
