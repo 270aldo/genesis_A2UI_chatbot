@@ -240,6 +240,47 @@ Real-time voice interaction using Gemini Live API with bidirectional audio strea
 { type: 'error', message: '...' }
 ```
 
+## Supabase Database (V3 Schema)
+
+Project: `genesis_A2UI` (xaxygzwoouaiguyuwpvf)
+
+### V3 Tables
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `sessions` | Clipboard persistence | session_id, user_id, clipboard_data (JSONB), status |
+| `user_profiles` | Extended user profiles | fitness_level, goals, wearables, preferences |
+| `conversation_messages` | Chat history | session_id, role, content, agent, widget_type |
+| `routing_history` | CORE routing analytics | selected_core, confidence, response_time_ms |
+| `wearable_connections` | OAuth tokens | provider (garmin/oura/whoop/apple), tokens, scopes |
+| `wearable_data` | Normalized metrics | HRV, sleep, recovery, steps (24 columns) |
+| `wearable_raw` | Raw API payloads | endpoint, payload (JSONB) |
+
+### Operational Tables
+
+| Table | Purpose |
+|-------|---------|
+| `daily_checkins` | Daily check-ins (SPARK) |
+| `workout_sessions` | Training sessions |
+| `set_logs` | Exercise set details |
+| `widget_events` | Widget analytics |
+
+### Views
+
+| View | Definition |
+|------|------------|
+| `active_sessions` | workout_sessions WHERE status='active' |
+| `todays_checkin` | daily_checkins WHERE date=today |
+
+### Migrations
+
+```bash
+# Migration files location
+supabase/migrations/
+├── 001_clipboard_schema.sql   # Initial clipboard
+└── 002_v3_schema_upgrade.sql  # V3 full schema
+```
+
 ## Environment Variables
 
 ```bash
@@ -247,6 +288,11 @@ Real-time voice interaction using Gemini Live API with bidirectional audio strea
 GOOGLE_API_KEY=...      # Required for chat and voice
 PORT=8000               # Default
 CORS_ORIGINS=["*"]      # JSON array
+
+# Supabase (optional - falls back to mock)
+SUPABASE_URL=https://xaxygzwoouaiguyuwpvf.supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_KEY=...
 
 # frontend (via Vite)
 VITE_API_URL=http://localhost:8000  # Backend URL
