@@ -25,10 +25,13 @@ redis_memory_size_gb = 1
 
 # Optional: Wearables daily sync (Cloud Scheduler)
 wearables_sync_enabled   = false
-wearables_sync_providers = ["oura", "whoop"]
-wearables_sync_user_id   = "system"
 wearables_sync_schedule  = "0 6 * * *"
 wearables_sync_time_zone = "UTC"
+
+# Optional: Cloud Tasks
+cloud_tasks_queue_name    = "genesis-wearables-sync"
+cloud_tasks_location      = "us-central1"
+cloud_tasks_service_account = ""
 
 # Optional: Custom labels
 labels = {

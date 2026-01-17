@@ -118,3 +118,20 @@ async def resolve_user_id(provider: str, provider_user_id: str) -> str | None:
     except Exception as exc:
         logger.exception("Failed to resolve user id: %s", exc)
     return None
+
+
+async def list_active_connections(provider: str | None = None) -> list[dict[str, Any]]:
+    if not SUPABASE_ENABLED:
+        logger.warning("Supabase not configured. Skipping wearable connections list.")
+        return []
+
+    try:
+        query = SUPABASE.table("wearable_connections").select("user_id, provider, status")
+        query = query.eq("status", "active")
+        if provider:
+            query = query.eq("provider", provider)
+        result = query.execute()
+        return result.data or []
+    except Exception as exc:
+        logger.exception("Failed to list wearable connections: %s", exc)
+        return []

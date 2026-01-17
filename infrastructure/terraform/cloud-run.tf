@@ -80,6 +80,41 @@ resource "google_cloud_run_v2_service" "services" {
         }
       }
 
+      env {
+        name = "SUPABASE_SERVICE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.supabase_service_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "API_BASE_URL"
+        value = var.api_base_url
+      }
+
+      env {
+        name  = "CLOUD_TASKS_PROJECT"
+        value = var.project_id
+      }
+
+      env {
+        name  = "CLOUD_TASKS_LOCATION"
+        value = var.cloud_tasks_location
+      }
+
+      env {
+        name  = "CLOUD_TASKS_QUEUE"
+        value = var.cloud_tasks_queue_name
+      }
+
+      env {
+        name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
+        value = var.cloud_tasks_service_account
+      }
+
       # Startup and liveness probes
       startup_probe {
         http_get {
@@ -172,6 +207,7 @@ resource "google_secret_manager_secret_iam_member" "secret_access" {
         google_secret_manager_secret.google_api_key.secret_id,
         google_secret_manager_secret.supabase_url.secret_id,
         google_secret_manager_secret.supabase_key.secret_id,
+        google_secret_manager_secret.supabase_service_key.secret_id,
       ] : "${sa_key}:${secret}"
     ]
   ]))

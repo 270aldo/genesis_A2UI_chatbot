@@ -43,6 +43,7 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "aiplatform.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "cloudtasks.googleapis.com",
   ])
 
   service            = each.value

@@ -126,17 +126,6 @@ variable "wearables_sync_enabled" {
   default     = false
 }
 
-variable "wearables_sync_providers" {
-  description = "Wearable providers to sync via scheduler"
-  type        = list(string)
-  default     = ["oura", "whoop"]
-}
-
-variable "wearables_sync_user_id" {
-  description = "User ID to sync (system or service account user)"
-  type        = string
-  default     = "system"
-}
 
 variable "wearables_sync_schedule" {
   description = "Cron schedule for daily wearable sync"
@@ -148,4 +137,22 @@ variable "wearables_sync_time_zone" {
   description = "Time zone for wearable sync schedule"
   type        = string
   default     = "UTC"
+}
+
+variable "cloud_tasks_queue_name" {
+  description = "Cloud Tasks queue name for wearables sync"
+  type        = string
+  default     = "genesis-wearables-sync"
+}
+
+variable "cloud_tasks_location" {
+  description = "Cloud Tasks location"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "cloud_tasks_service_account" {
+  description = "Service account email used by Cloud Tasks OIDC"
+  type        = string
+  default     = ""
 }

@@ -34,6 +34,17 @@ resource "google_secret_manager_secret" "supabase_key" {
   }
 }
 
+# Supabase Service Role Key (backend only)
+resource "google_secret_manager_secret" "supabase_service_key" {
+  secret_id = "supabase-service-key"
+
+  labels = var.labels
+
+  replication {
+    auto {}
+  }
+}
+
 # Wearable OAuth Secrets (for Phase 3)
 
 # Garmin OAuth 2.0 Credentials
@@ -105,3 +116,4 @@ resource "google_secret_manager_secret" "whoop_client_secret" {
 # echo -n "YOUR_GOOGLE_API_KEY" | gcloud secrets versions add google-api-key --data-file=-
 # echo -n "https://your-project.supabase.co" | gcloud secrets versions add supabase-url --data-file=-
 # echo -n "your-supabase-anon-key" | gcloud secrets versions add supabase-anon-key --data-file=-
+# echo -n "your-supabase-service-key" | gcloud secrets versions add supabase-service-key --data-file=-

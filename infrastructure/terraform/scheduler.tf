@@ -1,16 +1,27 @@
-# NGX GENESIS V3 - Cloud Scheduler jobs for wearables sync
+# NGX GENESIS V3 - Cloud Tasks + Scheduler for wearables sync
+
+resource "google_cloud_tasks_queue" "wearables" {
+  count    = var.wearables_sync_enabled ? 1 : 0
+  name     = var.cloud_tasks_queue_name
+  location = var.cloud_tasks_location
+
+  rate_limits {
+    max_dispatches_per_second = 5
+    max_concurrent_dispatches = 10
+  }
+}
 
 resource "google_cloud_scheduler_job" "wearables_sync" {
-  for_each = var.wearables_sync_enabled && var.api_base_url != "" ? toset(var.wearables_sync_providers) : toset([])
+  count = var.wearables_sync_enabled && var.api_base_url != "" ? 1 : 0
 
-  name        = "genesis-wearables-sync-${each.value}"
-  description = "Daily wearable sync for ${each.value}"
+  name        = "genesis-wearables-sync"
+  description = "Daily wearable sync dispatcher"
   schedule    = var.wearables_sync_schedule
   time_zone   = var.wearables_sync_time_zone
 
   http_target {
     http_method = "POST"
-    uri         = format("%s/api/wearables/%s/sync?user_id=%s", trim(var.api_base_url, "/"), each.value, var.wearables_sync_user_id)
+    uri         = format("%s/api/wearables/sync-all", trim(var.api_base_url, "/"))
     headers = {
       "Content-Type" = "application/json"
     }
@@ -20,5 +31,6 @@ resource "google_cloud_scheduler_job" "wearables_sync" {
 
   depends_on = [
     google_project_service.apis,
+    google_cloud_tasks_queue.wearables,
   ]
 }

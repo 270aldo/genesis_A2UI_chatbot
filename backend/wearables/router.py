@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from wearables.apple_health import AppleHealthBridge
@@ -13,11 +13,13 @@ from wearables.oura import OuraClient, normalize_sleep_payload
 from wearables.readiness import calculate_readiness
 from wearables.store import (
     get_connection,
+    list_active_connections,
     resolve_user_id,
     save_raw_payload,
     save_wearable_data,
     upsert_connection,
 )
+from wearables.tasks import enqueue_http_task, is_tasks_configured
 from wearables.whoop import WhoopClient, normalize_recovery_payload
 
 wearables_router = APIRouter(prefix="/api/wearables", tags=["wearables"])
@@ -57,6 +59,13 @@ class SyncResponse(BaseModel):
     records: int
     start_date: str
     end_date: str
+
+
+class SyncAllResponse(BaseModel):
+    status: str
+    total_connections: int
+    tasks_created: int
+    providers: list[str]
 
 
 @wearables_router.get("/providers")
@@ -273,4 +282,37 @@ async def sync_provider(
         records=records,
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
+    )
+
+
+@wearables_router.post("/sync-all", response_model=SyncAllResponse)
+async def sync_all_connections(
+    request: Request,
+    provider: str | None = Query(default=None, description="Optional provider filter"),
+):
+    connections = await list_active_connections(provider=provider)
+    base_url = request.base_url.rstrip("/")
+
+    tasks_created = 0
+    providers = sorted({conn["provider"] for conn in connections}) if connections else []
+
+    for conn in connections:
+        user_id = conn.get("user_id")
+        provider_id = conn.get("provider")
+        if not user_id or not provider_id:
+            continue
+
+        target_url = f"{base_url}/api/wearables/{provider_id}/sync?user_id={user_id}"
+
+        if is_tasks_configured():
+            enqueue_http_task(target_url)
+            tasks_created += 1
+        else:
+            await _fetch_and_store(provider_id, user_id, date.today() - timedelta(days=1), date.today())
+
+    return SyncAllResponse(
+        status="ok",
+        total_connections=len(connections),
+        tasks_created=tasks_created,
+        providers=providers,
     )
