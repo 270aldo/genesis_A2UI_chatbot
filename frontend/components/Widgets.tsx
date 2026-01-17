@@ -6,6 +6,8 @@ import {
   TrendingUp, TrendingDown, Lightbulb, Brain, Target,
   Sparkles, Timer, Trophy, PartyPopper, CircleDot,
   Bone, ShieldAlert, Gauge, Calendar, Sun, Coffee,
+  ChevronRight, Award, AlertCircle, BarChart3, Star,
+  Dumbbell, Check, Minus, Plus,
   type LucideIcon
 } from 'lucide-react';
 import { GlassCard, AgentBadge, ProgressBar, ActionButton, GlassInput, GlassSlider } from './BaseUI';
@@ -93,9 +95,121 @@ interface DailyCheckInProps {
   questions: { id: string; label: string; type: 'number' | 'slider' | 'text'; min?: number; max?: number }[];
 }
 
+// V3 Core Widget: genesis-quick-actions
+interface GenesisQuickActionsProps {
+  title: string;
+  actions: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    highlight?: boolean;  // For recommended action
+  }>;
+  recommendation?: {
+    actionId: string;
+    reason: string;  // "Based on your HRV today"
+  };
+}
+
+// Legacy alias for backward compatibility
 interface QuickActionsProps {
   title: string;
   actions: { id: string; label: string; icon: string }[];
+}
+
+// V3 Core Widget: readiness-checkin
+interface ReadinessCheckinProps {
+  fields: Array<{
+    id: string;
+    type: "slider" | "select";
+    label: string;
+    options?: string[];  // For select
+    min?: number;        // For slider
+    max?: number;
+  }>;
+  cta: {
+    id: string;
+    label: string;
+  };
+  prefilledData?: {
+    deviceReadiness?: number;  // From wearables
+    deviceSource?: string;
+  };
+}
+
+// V3 Core Widget: plan-card
+interface PlanCardProps {
+  mode: "workout" | "nutrition" | "habits";
+  title: string;
+  summary: string;
+  duration?: string;
+  intensity?: "low" | "moderate" | "high";
+  tabs?: Array<{
+    id: string;
+    label: string;
+    content: any;  // Tab-specific content
+  }>;
+  primaryCta: { id: string; label: string };
+  secondaryCta?: { id: string; label: string };
+  adjustedReason?: string;  // "Adjusted due to low HRV"
+}
+
+// V3 Core Widget: live-tracker
+interface LiveTrackerProps {
+  type: "workout" | "habits" | "nutrition";
+  sessionId: string;
+  progress: { current: number; total: number };
+
+  // For workout
+  currentExercise?: {
+    name: string;
+    sets: Array<{
+      number: number;
+      target: string;
+      logged?: { reps: number; weight: number };
+    }>;
+    restTimer?: number;  // Seconds remaining
+    videoUrl?: string;   // NGX trainer video
+  };
+
+  // For habits
+  items?: Array<{
+    id: string;
+    label: string;
+    done: boolean;
+    streak?: number;
+  }>;
+
+  cta: { id: string; label: string };
+}
+
+// V3 Core Widget: weekly-review-dashboard
+interface WeeklyReviewDashboardProps {
+  weekRange: string;  // "6-12 January 2026"
+  highlights: Array<{
+    title: string;
+    value: string;
+    trend?: "up" | "down" | "stable";
+  }>;
+  insights: Array<{
+    type: "win" | "risk" | "tip";
+    text: string;
+    icon?: string;
+  }>;
+  nextMove: {
+    question: string;
+    options: Array<{
+      id: string;
+      label: string;
+      description?: string;
+    }>;
+    recommendation?: string;  // ID of recommended option
+  };
+  wearableData?: {
+    avgHrv: number;
+    avgSleep: number;
+    trainingLoad: number;
+    trend: "increasing" | "decreasing" | "stable";
+  };
 }
 
 interface LiveSessionProps {
@@ -849,7 +963,7 @@ export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: st
   );
 };
 
-// 12. Quick Actions
+// 12. Quick Actions (Legacy)
 export const QuickActions: React.FC<{ data: QuickActionsProps; onAction: (id: string, payload: any) => void }> = ({ data, onAction }) => {
   const icons: Record<string, any> = { food: UtensilsCrossed, dumbbell: Zap, water: Droplets, sleep: Moon, activity: Activity };
 
@@ -858,7 +972,7 @@ export const QuickActions: React.FC<{ data: QuickActionsProps; onAction: (id: st
       {data.actions.map((action) => {
         const Icon = icons[action.icon] || Zap;
         return (
-          <button 
+          <button
             key={action.id}
             onClick={() => onAction(action.id, {})}
             className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left"
@@ -873,6 +987,610 @@ export const QuickActions: React.FC<{ data: QuickActionsProps; onAction: (id: st
     </div>
   );
 };
+
+// =============================================================================
+// V3 CORE WIDGETS
+// =============================================================================
+
+// V3 Widget 1: genesis-quick-actions
+export const GenesisQuickActions: React.FC<{
+  data: GenesisQuickActionsProps;
+  onAction: (id: string, payload: any) => void;
+}> = ({ data, onAction }) => {
+  const icons: Record<string, LucideIcon> = {
+    pulse: Activity,
+    dumbbell: Dumbbell,
+    fork: UtensilsCrossed,
+    moon: Moon,
+    chart: BarChart3,
+    check: CheckCircle2,
+    food: UtensilsCrossed,
+    water: Droplets,
+    activity: Activity,
+  };
+
+  return (
+    <GlassCard className="animate-in">
+      <div className="space-y-3">
+        {/* Title */}
+        <h3 className="text-sm font-semibold text-white/90">{data.title}</h3>
+
+        {/* Recommendation banner */}
+        {data.recommendation && (
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+            <Lightbulb size={14} className="text-violet-400" />
+            <span className="text-xs text-violet-300">{data.recommendation.reason}</span>
+          </div>
+        )}
+
+        {/* Actions grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {data.actions.map((action) => {
+            const Icon = icons[action.icon] || Zap;
+            const isHighlighted = action.highlight || data.recommendation?.actionId === action.id;
+
+            return (
+              <button
+                key={action.id}
+                onClick={() => onAction('widget_action_clicked', { actionId: action.id })}
+                className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left ${
+                  isHighlighted
+                    ? 'bg-violet-500/20 border border-violet-500/40 hover:bg-violet-500/30'
+                    : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                  isHighlighted ? 'bg-violet-500/30 text-violet-300' : 'bg-white/5 text-white/80'
+                }`}>
+                  <Icon size={16} />
+                </div>
+                <span className={`text-xs font-bold ${
+                  isHighlighted ? 'text-violet-200' : 'text-white/90'
+                }`}>
+                  {action.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </GlassCard>
+  );
+};
+
+// V3 Widget 2: readiness-checkin
+export const ReadinessCheckin: React.FC<{
+  data: ReadinessCheckinProps;
+  onAction: (id: string, payload: any) => void;
+}> = ({ data, onAction }) => {
+  const [values, setValues] = useState<Record<string, number | string>>({});
+
+  // Initialize with defaults
+  useEffect(() => {
+    const initial: Record<string, number | string> = {};
+    data.fields.forEach(field => {
+      if (field.type === 'slider') {
+        initial[field.id] = field.min || 5;
+      } else {
+        initial[field.id] = field.options?.[0] || '';
+      }
+    });
+    setValues(initial);
+  }, [data.fields]);
+
+  const handleSubmit = () => {
+    onAction('widget_form_submitted', values);
+  };
+
+  return (
+    <GlassCard className="animate-in">
+      <div className="space-y-4">
+        {/* Header with device data */}
+        {data.prefilledData && (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <div className="flex items-center gap-2">
+              <Activity size={16} className="text-emerald-400" />
+              <span className="text-sm text-emerald-300">
+                Readiness: {data.prefilledData.deviceReadiness}%
+              </span>
+            </div>
+            <span className="text-xs text-emerald-400/70">
+              {data.prefilledData.deviceSource}
+            </span>
+          </div>
+        )}
+
+        {/* Fields */}
+        <div className="space-y-4">
+          {data.fields.map((field) => (
+            <div key={field.id} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm text-white/80">{field.label}</label>
+                {field.type === 'slider' && (
+                  <span className="text-sm font-bold text-white/90">
+                    {values[field.id] || field.min || 1}
+                  </span>
+                )}
+              </div>
+
+              {field.type === 'slider' ? (
+                <GlassSlider
+                  min={field.min || 1}
+                  max={field.max || 10}
+                  value={Number(values[field.id]) || field.min || 1}
+                  onChange={(val) => setValues(prev => ({ ...prev, [field.id]: val }))}
+                />
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  {field.options?.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setValues(prev => ({ ...prev, [field.id]: option }))}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                        values[field.id] === option
+                          ? 'bg-violet-500/30 border border-violet-500/50 text-violet-200'
+                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <ActionButton onClick={handleSubmit} color={COLORS.genesis}>
+          {data.cta.label}
+        </ActionButton>
+      </div>
+    </GlassCard>
+  );
+};
+
+// V3 Widget 3: plan-card
+export const PlanCard: React.FC<{
+  data: PlanCardProps;
+  onAction: (id: string, payload: any) => void;
+}> = ({ data, onAction }) => {
+  const [activeTab, setActiveTab] = useState(data.tabs?.[0]?.id || 'summary');
+
+  const modeColors = {
+    workout: { bg: 'bg-orange-500/20', border: 'border-orange-500/40', text: 'text-orange-300' },
+    nutrition: { bg: 'bg-green-500/20', border: 'border-green-500/40', text: 'text-green-300' },
+    habits: { bg: 'bg-blue-500/20', border: 'border-blue-500/40', text: 'text-blue-300' },
+  };
+
+  const intensityLabels = {
+    low: { label: 'Baja', color: 'text-green-400' },
+    moderate: { label: 'Moderada', color: 'text-yellow-400' },
+    high: { label: 'Alta', color: 'text-red-400' },
+  };
+
+  const colors = modeColors[data.mode];
+  const intensity = data.intensity ? intensityLabels[data.intensity] : null;
+
+  return (
+    <GlassCard className="animate-in">
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-white">{data.title}</h3>
+            <p className="text-xs text-white/60">{data.summary}</p>
+          </div>
+          <div className={`px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.border} border ${colors.text}`}>
+            {data.mode}
+          </div>
+        </div>
+
+        {/* Meta info */}
+        <div className="flex gap-4 text-xs text-white/70">
+          {data.duration && (
+            <div className="flex items-center gap-1">
+              <Clock size={12} />
+              <span>{data.duration}</span>
+            </div>
+          )}
+          {intensity && (
+            <div className="flex items-center gap-1">
+              <Gauge size={12} />
+              <span className={intensity.color}>{intensity.label}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Adjustment reason */}
+        {data.adjustedReason && (
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <AlertCircle size={14} className="text-amber-400" />
+            <span className="text-xs text-amber-300">{data.adjustedReason}</span>
+          </div>
+        )}
+
+        {/* Tabs */}
+        {data.tabs && data.tabs.length > 1 && (
+          <div className="flex gap-2 border-b border-white/10 pb-2">
+            {data.tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  onAction('widget_tab_changed', { tabId: tab.id });
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Tab content */}
+        {data.tabs && (
+          <div className="min-h-[100px]">
+            {data.tabs.find(t => t.id === activeTab)?.content && (
+              <div className="space-y-2">
+                {Array.isArray(data.tabs.find(t => t.id === activeTab)?.content) ? (
+                  (data.tabs.find(t => t.id === activeTab)?.content as any[]).map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-2 rounded-lg bg-white/5">
+                      <span className="text-sm text-white/90">{item.name}</span>
+                      <span className="text-xs text-white/60">{item.sets || item.time || ''}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    {Object.entries(data.tabs.find(t => t.id === activeTab)?.content || {}).map(([key, value]) => (
+                      <div key={key} className="p-2 rounded-lg bg-white/5">
+                        <div className="text-lg font-bold text-white">{String(value)}</div>
+                        <div className="text-xs text-white/50 capitalize">{key}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CTAs */}
+        <div className="flex gap-2">
+          <ActionButton
+            onClick={() => onAction('widget_action_clicked', { ctaId: data.primaryCta.id })}
+            color={COLORS.genesis}
+            className="flex-1"
+          >
+            {data.primaryCta.label}
+          </ActionButton>
+          {data.secondaryCta && (
+            <button
+              onClick={() => onAction('widget_action_clicked', { ctaId: data.secondaryCta!.id })}
+              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 hover:bg-white/10 transition-all"
+            >
+              {data.secondaryCta.label}
+            </button>
+          )}
+        </div>
+      </div>
+    </GlassCard>
+  );
+};
+
+// V3 Widget 4: live-tracker
+export const LiveTracker: React.FC<{
+  data: LiveTrackerProps;
+  onAction: (id: string, payload: any) => void;
+}> = ({ data, onAction }) => {
+  const [restTimer, setRestTimer] = useState<number | null>(data.currentExercise?.restTimer || null);
+  const [weight, setWeight] = useState('');
+  const [reps, setReps] = useState('');
+
+  // Rest timer countdown
+  useEffect(() => {
+    if (restTimer !== null && restTimer > 0) {
+      const interval = setInterval(() => {
+        setRestTimer(prev => (prev !== null && prev > 0 ? prev - 1 : null));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [restTimer]);
+
+  const handleLogSet = () => {
+    const currentSet = data.currentExercise?.sets.find(s => !s.logged);
+    if (currentSet) {
+      onAction('widget_set_logged', {
+        setNumber: currentSet.number,
+        reps: parseInt(reps) || 0,
+        weight: parseFloat(weight) || 0,
+      });
+      setWeight('');
+      setReps('');
+    }
+  };
+
+  const progress = (data.progress.current / data.progress.total) * 100;
+
+  return (
+    <GlassCard className="animate-in">
+      <div className="space-y-4">
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-white/70">
+            <span>Progreso de sesión</span>
+            <span>{data.progress.current}/{data.progress.total}</span>
+          </div>
+          <ProgressBar value={progress} max={100} color={COLORS.genesis} />
+        </div>
+
+        {/* Workout mode */}
+        {data.type === 'workout' && data.currentExercise && (
+          <>
+            <div className="text-center py-2">
+              <h3 className="text-lg font-bold text-white">{data.currentExercise.name}</h3>
+            </div>
+
+            {/* Sets progress */}
+            <div className="space-y-2">
+              {data.currentExercise.sets.map((set, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    set.logged
+                      ? 'bg-green-500/20 border border-green-500/30'
+                      : idx === data.currentExercise!.sets.findIndex(s => !s.logged)
+                      ? 'bg-violet-500/20 border border-violet-500/40'
+                      : 'bg-white/5 border border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white/80">Set {set.number}</span>
+                    <span className="text-xs text-white/50">{set.target}</span>
+                  </div>
+                  {set.logged ? (
+                    <div className="flex items-center gap-1 text-green-400">
+                      <CheckCircle2 size={14} />
+                      <span className="text-xs">{set.logged.reps}×{set.logged.weight}kg</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-white/40">Pendiente</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Rest timer */}
+            {restTimer !== null && restTimer > 0 && (
+              <div className="text-center p-4 rounded-xl bg-white/5">
+                <div className="text-3xl font-bold text-white">{restTimer}s</div>
+                <div className="text-xs text-white/50">Descanso</div>
+              </div>
+            )}
+
+            {/* Log set inputs */}
+            {!restTimer && (
+              <div className="flex gap-2">
+                <GlassInput
+                  type="number"
+                  placeholder="Peso (kg)"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  className="flex-1"
+                />
+                <GlassInput
+                  type="number"
+                  placeholder="Reps"
+                  value={reps}
+                  onChange={(e) => setReps(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Habits mode */}
+        {data.type === 'habits' && data.items && (
+          <div className="space-y-2">
+            {data.items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onAction('widget_habit_toggled', { itemId: item.id, done: !item.done })}
+                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${
+                  item.done
+                    ? 'bg-green-500/20 border border-green-500/30'
+                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    item.done ? 'bg-green-500' : 'border border-white/30'
+                  }`}>
+                    {item.done && <Check size={14} className="text-white" />}
+                  </div>
+                  <span className={`text-sm ${item.done ? 'text-green-300' : 'text-white/80'}`}>
+                    {item.label}
+                  </span>
+                </div>
+                {item.streak && item.streak > 0 && (
+                  <div className="flex items-center gap-1 text-orange-400">
+                    <Flame size={14} />
+                    <span className="text-xs font-bold">{item.streak}</span>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* CTA */}
+        <ActionButton
+          onClick={() => {
+            if (data.type === 'workout' && !restTimer) {
+              handleLogSet();
+            } else {
+              onAction('widget_action_clicked', { ctaId: data.cta.id });
+            }
+          }}
+          color={COLORS.genesis}
+        >
+          {data.type === 'workout' && !restTimer ? 'Registrar set' : data.cta.label}
+        </ActionButton>
+      </div>
+    </GlassCard>
+  );
+};
+
+// V3 Widget 5: weekly-review-dashboard
+export const WeeklyReviewDashboard: React.FC<{
+  data: WeeklyReviewDashboardProps;
+  onAction: (id: string, payload: any) => void;
+}> = ({ data, onAction }) => {
+  const [selectedOption, setSelectedOption] = useState<string | null>(data.nextMove.recommendation || null);
+
+  const insightIcons: Record<string, LucideIcon> = {
+    trophy: Trophy,
+    alert: AlertCircle,
+    moon: Moon,
+    lightbulb: Lightbulb,
+  };
+
+  const insightColors = {
+    win: { bg: 'bg-green-500/20', border: 'border-green-500/30', icon: 'text-green-400' },
+    risk: { bg: 'bg-red-500/20', border: 'border-red-500/30', icon: 'text-red-400' },
+    tip: { bg: 'bg-blue-500/20', border: 'border-blue-500/30', icon: 'text-blue-400' },
+  };
+
+  const trendIcons = {
+    up: <TrendingUp size={14} className="text-green-400" />,
+    down: <TrendingDown size={14} className="text-red-400" />,
+    stable: <Minus size={14} className="text-white/40" />,
+  };
+
+  return (
+    <GlassCard className="animate-in">
+      <div className="space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold text-white">Revisión Semanal</h3>
+            <p className="text-xs text-white/50">{data.weekRange}</p>
+          </div>
+          <BarChart3 size={20} className="text-violet-400" />
+        </div>
+
+        {/* Highlights grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {data.highlights.map((highlight, idx) => (
+            <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-white/50">{highlight.title}</span>
+                {highlight.trend && trendIcons[highlight.trend]}
+              </div>
+              <div className="text-lg font-bold text-white">{highlight.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Wearable data */}
+        {data.wearableData && (
+          <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity size={14} className="text-violet-400" />
+              <span className="text-xs text-violet-300">Datos de dispositivos</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div className="text-sm font-bold text-white">{data.wearableData.avgHrv}ms</div>
+                <div className="text-xs text-white/40">HRV Prom</div>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">{data.wearableData.avgSleep}h</div>
+                <div className="text-xs text-white/40">Sueño Prom</div>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">{data.wearableData.trainingLoad}</div>
+                <div className="text-xs text-white/40">Carga</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Insights */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-white/70">Insights</h4>
+          {data.insights.map((insight, idx) => {
+            const colors = insightColors[insight.type];
+            const Icon = insight.icon ? (insightIcons[insight.icon] || Lightbulb) : Lightbulb;
+
+            return (
+              <div
+                key={idx}
+                className={`flex items-start gap-3 p-3 rounded-lg ${colors.bg} border ${colors.border}`}
+              >
+                <Icon size={16} className={colors.icon} />
+                <span className="text-xs text-white/90">{insight.text}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Next move decision */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-white/90">{data.nextMove.question}</h4>
+          <div className="space-y-2">
+            {data.nextMove.options.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setSelectedOption(option.id)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left ${
+                  selectedOption === option.id
+                    ? 'bg-violet-500/30 border border-violet-500/50'
+                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                <div>
+                  <div className={`text-sm font-medium ${
+                    selectedOption === option.id ? 'text-violet-200' : 'text-white/90'
+                  }`}>
+                    {option.label}
+                  </div>
+                  {option.description && (
+                    <div className="text-xs text-white/50">{option.description}</div>
+                  )}
+                </div>
+                {data.nextMove.recommendation === option.id && (
+                  <div className="flex items-center gap-1 text-violet-400">
+                    <Star size={12} />
+                    <span className="text-xs">Recomendado</span>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Confirm CTA */}
+        <ActionButton
+          onClick={() => onAction('widget_priority_selected', { priorityId: selectedOption })}
+          color={COLORS.genesis}
+          disabled={!selectedOption}
+        >
+          Confirmar prioridad
+        </ActionButton>
+      </div>
+    </GlassCard>
+  );
+};
+
+// =============================================================================
+// END V3 CORE WIDGETS
+// =============================================================================
 
 // 13. Live Session Tracker
 interface SetRecord {
@@ -2840,6 +3558,17 @@ export const A2UIMediator: React.FC<A2UIMediatorProps> = ({ payload, onAction, a
       return <CycleTracker data={props as CycleTrackerProps} onAction={onAction} agent={agent} />;
     case 'cycle-adjustment':
       return <CycleAdjustment data={props as CycleAdjustmentProps} agent={agent} />;
+    // V3 Core Widgets
+    case 'genesis-quick-actions':
+      return <GenesisQuickActions data={props as GenesisQuickActionsProps} onAction={onAction} />;
+    case 'readiness-checkin':
+      return <ReadinessCheckin data={props as ReadinessCheckinProps} onAction={onAction} />;
+    case 'plan-card':
+      return <PlanCard data={props as PlanCardProps} onAction={onAction} />;
+    case 'live-tracker':
+      return <LiveTracker data={props as LiveTrackerProps} onAction={onAction} />;
+    case 'weekly-review-dashboard':
+      return <WeeklyReviewDashboard data={props as WeeklyReviewDashboardProps} onAction={onAction} />;
     default:
       return null;
   }

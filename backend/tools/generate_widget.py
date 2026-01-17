@@ -62,10 +62,42 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
       props: { durationSeconds?, technique: 'box'|'4-7-8' }
     
     ### GENESIS (Coordinación):
-    - quick-actions: Inicio de sesión
+    - quick-actions: Inicio de sesión (legacy)
     - progress-dashboard: Resumen general
     - Puede coordinar múltiples widgets de diferentes agentes
-    
+
+    ### V3 CORE WIDGETS (Preferred):
+    - genesis-quick-actions: Command center entry point
+      props: { title, actions[], recommendation? }
+      actions[]: { id, label, icon, highlight? }
+      recommendation: { actionId, reason }
+
+    - readiness-checkin: Subjective signal capture
+      props: { fields[], cta, prefilledData? }
+      fields[]: { id, type: 'slider'|'select', label, options?, min?, max? }
+      cta: { id, label }
+      prefilledData: { deviceReadiness?, deviceSource? }
+
+    - plan-card: Unified plan format (workout/nutrition/habits)
+      props: { mode, title, summary, duration?, intensity?, tabs?, primaryCta, secondaryCta?, adjustedReason? }
+      mode: 'workout'|'nutrition'|'habits'
+      tabs[]: { id, label, content }
+      primaryCta: { id, label }
+
+    - live-tracker: Real-time session tracking
+      props: { type, sessionId, progress, currentExercise?, items?, cta }
+      type: 'workout'|'habits'|'nutrition'
+      progress: { current, total }
+      currentExercise: { name, sets[], restTimer?, videoUrl? }
+      items[]: { id, label, done, streak? }
+
+    - weekly-review-dashboard: Weekly premium moment with insights + decision
+      props: { weekRange, highlights[], insights[], nextMove, wearableData? }
+      highlights[]: { title, value, trend? }
+      insights[]: { type: 'win'|'risk'|'tip', text, icon? }
+      nextMove: { question, options[], recommendation? }
+      wearableData: { avgHrv, avgSleep, trainingLoad, trend }
+
     ### Variable:
     - alert-banner: Notificaciones
       props: { type: 'warning'|'error'|'success', message }

@@ -101,7 +101,13 @@ export type WidgetType =
   // Education widgets
   | 'micro-learning'
   | 'educational-prompt'
-  | 'why-this-works';
+  | 'why-this-works'
+  // V3 Core Widgets
+  | 'genesis-quick-actions'
+  | 'readiness-checkin'
+  | 'plan-card'
+  | 'live-tracker'
+  | 'weekly-review-dashboard';
 
 /**
  * Widget payload for A2UI rendering.
