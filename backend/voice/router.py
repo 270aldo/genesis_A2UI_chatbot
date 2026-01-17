@@ -27,6 +27,8 @@ from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
+from services.auth import resolve_user_id_from_headers
+
 from .session import VoiceSession, VoiceSessionConfig
 
 logger = logging.getLogger(__name__)
@@ -57,7 +59,8 @@ async def voice_endpoint(
         See module docstring for message formats.
     """
     await websocket.accept()
-    logger.info(f"Voice WebSocket connected: user={user_id}, session={session_id}")
+    effective_user_id = resolve_user_id_from_headers(websocket.headers, user_id)
+    logger.info(f"Voice WebSocket connected: user={effective_user_id}, session={session_id}")
 
     # Generate session ID if not provided
     effective_session_id = session_id or str(uuid4())
@@ -65,7 +68,7 @@ async def voice_endpoint(
     # Create session config
     config = VoiceSessionConfig(
         session_id=effective_session_id,
-        user_id=user_id,
+        user_id=effective_user_id,
         language=language,
     )
 

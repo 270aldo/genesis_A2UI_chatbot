@@ -25,6 +25,14 @@ resource "google_cloud_scheduler_job" "wearables_sync" {
     headers = {
       "Content-Type" = "application/json"
     }
+
+    dynamic "oidc_token" {
+      for_each = var.cloud_tasks_service_account != "" ? [var.cloud_tasks_service_account] : []
+      content {
+        service_account_email = oidc_token.value
+        audience              = var.api_base_url
+      }
+    }
   }
 
   attempt_deadline = "320s"

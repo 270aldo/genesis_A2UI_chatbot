@@ -11,6 +11,8 @@ CLOUD_TASKS_PROJECT = os.getenv("CLOUD_TASKS_PROJECT", "")
 CLOUD_TASKS_LOCATION = os.getenv("CLOUD_TASKS_LOCATION", "")
 CLOUD_TASKS_QUEUE = os.getenv("CLOUD_TASKS_QUEUE", "")
 CLOUD_TASKS_SERVICE_ACCOUNT = os.getenv("CLOUD_TASKS_SERVICE_ACCOUNT", "")
+SYNC_API_KEY = os.getenv("SYNC_API_KEY", "")
+SYNC_AUTH_AUDIENCE = os.getenv("SYNC_AUTH_AUDIENCE", "") or os.getenv("API_BASE_URL", "")
 
 
 def is_tasks_configured() -> bool:
@@ -41,10 +43,15 @@ def enqueue_http_task(url: str, payload: dict[str, Any] | None = None) -> dict[s
     if payload is not None:
         task["httpRequest"]["body"] = json.dumps(payload).encode("utf-8")
 
+    if SYNC_API_KEY:
+        task["httpRequest"]["headers"]["X-API-Key"] = SYNC_API_KEY
+
     if CLOUD_TASKS_SERVICE_ACCOUNT:
         task["httpRequest"]["oidcToken"] = {
             "serviceAccountEmail": CLOUD_TASKS_SERVICE_ACCOUNT,
         }
+        if SYNC_AUTH_AUDIENCE:
+            task["httpRequest"]["oidcToken"]["audience"] = SYNC_AUTH_AUDIENCE
 
     request = Request()
     credentials.refresh(request)

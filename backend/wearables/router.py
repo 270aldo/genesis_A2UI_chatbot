@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+import os
 from typing import Any
 from uuid import uuid4
 
@@ -18,8 +19,10 @@ from wearables.store import (
     save_raw_payload,
     save_wearable_data,
     upsert_connection,
+    touch_connection_sync,
 )
 from wearables.tasks import enqueue_http_task, is_tasks_configured
+from services.auth import verify_internal_request
 from wearables.whoop import WhoopClient, normalize_recovery_payload
 
 wearables_router = APIRouter(prefix="/api/wearables", tags=["wearables"])
@@ -35,6 +38,9 @@ PROVIDERS = {
     "whoop": WHOOP,
     "apple": APPLE,
 }
+
+API_BASE_URL = os.getenv("API_BASE_URL", "").rstrip("/")
+SYNC_MIN_INTERVAL_MINUTES = int(os.getenv("SYNC_MIN_INTERVAL_MINUTES", "60"))
 
 
 class AuthResponse(BaseModel):
@@ -93,6 +99,17 @@ async def list_providers() -> dict[str, Any]:
                 "oauth": False,
             },
         ]
+    }
+
+
+@wearables_router.get("/health")
+async def wearables_health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "providers": list(PROVIDERS.keys()),
+        "tasks_configured": is_tasks_configured(),
+        "sync_min_interval_minutes": SYNC_MIN_INTERVAL_MINUTES,
+        "api_base_url": API_BASE_URL or None,
     }
 
 
@@ -194,7 +211,7 @@ def _parse_expires_at(value: Any) -> datetime | None:
     try:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
-        return None
+    return None
 
 
 async def _ensure_tokens(provider: str, user_id: str):
@@ -222,6 +239,16 @@ async def _ensure_tokens(provider: str, user_id: str):
     return access_token
 
 
+def _should_sync(last_sync: Any) -> bool:
+    if not last_sync:
+        return True
+    try:
+        parsed = datetime.fromisoformat(str(last_sync).replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    return parsed <= datetime.utcnow() - timedelta(minutes=SYNC_MIN_INTERVAL_MINUTES)
+
+
 async def _fetch_and_store(provider: str, user_id: str, start_date: date, end_date: date) -> int:
     access_token = await _ensure_tokens(provider, user_id)
 
@@ -247,15 +274,20 @@ async def _fetch_and_store(provider: str, user_id: str, start_date: date, end_da
         await save_wearable_data(metrics)
         saved += 1
 
+    if saved:
+        await touch_connection_sync(user_id, provider)
+
     return saved
 
 
 @wearables_router.post("/{provider}/backfill", response_model=SyncResponse)
 async def backfill_provider(
+    request: Request,
     provider: str,
     user_id: str = Query(..., description="User identifier"),
     days: int = Query(default=30, ge=1, le=365),
 ):
+    verify_internal_request(request)
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
     records = await _fetch_and_store(provider, user_id, start_date, end_date)
@@ -270,9 +302,11 @@ async def backfill_provider(
 
 @wearables_router.post("/{provider}/sync", response_model=SyncResponse)
 async def sync_provider(
+    request: Request,
     provider: str,
     user_id: str = Query(..., description="User identifier"),
 ):
+    verify_internal_request(request)
     end_date = date.today()
     start_date = end_date - timedelta(days=1)
     records = await _fetch_and_store(provider, user_id, start_date, end_date)
@@ -290,8 +324,9 @@ async def sync_all_connections(
     request: Request,
     provider: str | None = Query(default=None, description="Optional provider filter"),
 ):
+    verify_internal_request(request)
     connections = await list_active_connections(provider=provider)
-    base_url = request.base_url.rstrip("/")
+    base_url = API_BASE_URL or request.base_url.rstrip("/")
 
     tasks_created = 0
     providers = sorted({conn["provider"] for conn in connections}) if connections else []
@@ -300,6 +335,9 @@ async def sync_all_connections(
         user_id = conn.get("user_id")
         provider_id = conn.get("provider")
         if not user_id or not provider_id:
+            continue
+
+        if not _should_sync(conn.get("last_sync")):
             continue
 
         target_url = f"{base_url}/api/wearables/{provider_id}/sync?user_id={user_id}"

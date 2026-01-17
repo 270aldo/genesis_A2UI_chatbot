@@ -96,6 +96,11 @@ resource "google_cloud_run_v2_service" "services" {
       }
 
       env {
+        name  = "SYNC_AUTH_AUDIENCE"
+        value = var.api_base_url
+      }
+
+      env {
         name  = "CLOUD_TASKS_PROJECT"
         value = var.project_id
       }

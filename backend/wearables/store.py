@@ -126,7 +126,7 @@ async def list_active_connections(provider: str | None = None) -> list[dict[str,
         return []
 
     try:
-        query = SUPABASE.table("wearable_connections").select("user_id, provider, status")
+        query = SUPABASE.table("wearable_connections").select("user_id, provider, status, last_sync")
         query = query.eq("status", "active")
         if provider:
             query = query.eq("provider", provider)
@@ -135,3 +135,14 @@ async def list_active_connections(provider: str | None = None) -> list[dict[str,
     except Exception as exc:
         logger.exception("Failed to list wearable connections: %s", exc)
         return []
+
+
+async def touch_connection_sync(user_id: str, provider: str) -> None:
+    if not SUPABASE_ENABLED:
+        return
+    try:
+        SUPABASE.table("wearable_connections").update({
+            "last_sync": datetime.utcnow().isoformat(),
+        }).eq("user_id", user_id).eq("provider", provider).execute()
+    except Exception as exc:
+        logger.exception("Failed to update wearable last_sync: %s", exc)

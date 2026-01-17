@@ -12,7 +12,7 @@ import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -22,6 +22,7 @@ from agent import root_agent
 from schemas.clipboard import MessageRole
 from schemas.request import ChatRequest, EventsRequest
 from schemas.response import AgentResponse
+from services.auth import resolve_user_id_from_request
 from services.session_store import get_or_create_session, set_session
 from wearables import wearables_router
 from voice import voice_router
@@ -143,7 +144,7 @@ async def health_check():
 
 
 @app.post("/api/chat", response_model=AgentResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, raw_request: Request):
     """
     Main chat endpoint.
     
@@ -154,21 +155,23 @@ async def chat(request: ChatRequest):
         logger.info(f"Chat request: {request.message[:50]}...")
         
         # Get or create ADK session
+        user_id = resolve_user_id_from_request(raw_request, request.user_id)
+
         session = await session_service.get_session(
             app_name="ngx-a2ui",
-            user_id=request.user_id,
+            user_id=user_id,
             session_id=request.session_id,
         )
         
         if session is None:
             session = await session_service.create_session(
                 app_name="ngx-a2ui",
-                user_id=request.user_id,
+                user_id=user_id,
                 session_id=request.session_id,
             )
         
         # Persist clipboard state (independent of ADK session)
-        clipboard = await get_or_create_session(request.session_id, request.user_id)
+        clipboard = await get_or_create_session(request.session_id, user_id)
         clipboard.add_message(
             MessageRole.USER,
             request.message,
