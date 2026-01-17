@@ -67,7 +67,7 @@ Frontend expects exactly this structure from `/api/chat`:
 ```json
 {
   "text": "Response text (markdown supported)",
-  "agent": "BLAZE",
+  "agent": "GENESIS",
   "payload": {
     "type": "workout-card",
     "props": { ... }
@@ -75,9 +75,10 @@ Frontend expects exactly this structure from `/api/chat`:
 }
 ```
 
-- `agent` must be UPPERCASE
-- `payload` is optional (LOGOS typically returns none)
+- **V3**: `agent` is ALWAYS "GENESIS" - unified identity regardless of which CORE processed the request
+- `payload` is optional (Education CORE typically returns none)
 - `payload.type` determines which React component renders
+- Widget colors are determined by `category` (training, nutrition, recovery, etc.), not by agent
 
 ## Key Files
 
@@ -86,9 +87,10 @@ Frontend expects exactly this structure from `/api/chat`:
 |------|---------|
 | `backend/main.py` | FastAPI server, `/api/chat`, response parsing |
 | `backend/agent/genesis.py` | Root orchestrator with `sub_agents=[...]` |
-| `backend/agent/specialists/*.py` | Each agent loads from `instructions/*.txt` |
-| `backend/tools/generate_widget.py` | Widget tool (14 types) |
-| `backend/schemas/response.py` | `AgentResponse(text, agent, payload)` |
+| `backend/agent/cores/*.py` | V3 CORES (Training, Nutrition, etc.) |
+| `backend/tools/generate_widget.py` | Widget tool (40+ types) |
+| `backend/schemas/response.py` | `AgentResponse(text, agent="GENESIS", payload)` |
+| `backend/voice/` | Voice engine module (Gemini Live API) |
 
 ### Frontend
 | File | Purpose |
@@ -97,7 +99,8 @@ Frontend expects exactly this structure from `/api/chat`:
 | `frontend/services/api.ts` | Backend API client |
 | `frontend/components/Widgets.tsx` | All widgets + `A2UIMediator` switch |
 | `frontend/components/BaseUI.tsx` | `GlassCard`, buttons, inputs |
-| `frontend/constants.ts` | Colors, agent config |
+| `frontend/constants.ts` | GENESIS brand colors, category colors |
+| `frontend/types/voice.ts` | Voice mode types (WebSocket, states) |
 
 ## ADK Patterns
 
@@ -150,13 +153,15 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
 | por qué, explícame, concepto | LOGOS | None (TEXT_ONLY) |
 | hola, inicio | GENESIS | quick-actions |
 
-## Adding New Agents
+## Adding New CORES (V3)
 
-1. Create `backend/agent/specialists/new_agent.py`
-2. Create `backend/instructions/new_agent.txt`
+1. Create `backend/agent/cores/new_core.py`
+2. Create `backend/instructions/new_core.txt`
 3. Add to `backend/agent/genesis.py` sub_agents list
-4. Update `backend/agent/specialists/__init__.py`
+4. Update `backend/agent/cores/__init__.py`
 5. Add routing tests in `backend/tests/`
+
+**Note**: V3 uses unified GENESIS identity. All responses appear from "GENESIS" regardless of which CORE processed them.
 
 ## Adding New Widgets
 
@@ -177,11 +182,69 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
 - **Frontend uses api.ts**: Not geminiService.ts (which was direct Gemini)
 - **CRITICAL - ADK Template Variables**: In instruction `.txt` files, avoid `{ variable }` syntax as ADK interprets curly braces as context variables. Use `(variable)` instead to document payload structures
 
+## Voice Engine
+
+Real-time voice interaction using Gemini Live API with bidirectional audio streaming.
+
+### Architecture
+```
+┌─────────────────┐     WebSocket      ┌─────────────────┐
+│  Frontend       │◄──────────────────►│  Backend        │
+│  VoiceMode.tsx  │   /ws/voice        │  voice/router   │
+│  ParticleOrb    │                    │  voice/session  │
+│  useVoiceSession│                    │  voice/gemini   │
+└─────────────────┘                    └────────┬────────┘
+                                                │
+                                       ┌────────▼────────┐
+                                       │  Gemini Live    │
+                                       │  Bidi Streaming │
+                                       └─────────────────┘
+```
+
+### Key Files
+| File | Purpose |
+|------|---------|
+| `backend/voice/router.py` | WebSocket `/ws/voice` endpoint |
+| `backend/voice/session.py` | Voice session manager |
+| `backend/voice/gemini_live.py` | Gemini Live API client |
+| `backend/voice/audio_utils.py` | PCM encoding/decoding |
+| `frontend/components/voice/VoiceMode.tsx` | Full-screen voice UI |
+| `frontend/components/voice/ParticleOrb.tsx` | Animated orb visualization |
+| `frontend/hooks/useVoiceSession.ts` | Voice state management |
+| `frontend/services/voiceApi.ts` | WebSocket client |
+
+### Audio Format
+- **Input**: PCM 16-bit signed, little-endian, 16kHz mono
+- **Output**: PCM 16-bit signed, little-endian, 24kHz mono
+- **Transport**: Base64 encoded over JSON WebSocket
+
+### Voice States
+- `idle`: Ready, particles floating gently
+- `listening`: User speaking, particles expanding
+- `processing`: Gemini processing, particles spinning
+- `speaking`: GENESIS responding, particles pulsing
+
+### WebSocket Protocol
+```typescript
+// Client → Server
+{ type: 'audio_chunk', data: '<base64 PCM>' }
+{ type: 'end_turn' }
+{ type: 'cancel' }
+
+// Server → Client
+{ type: 'transcript', text: '...', final: boolean }
+{ type: 'audio_chunk', data: '<base64 PCM>' }
+{ type: 'state', value: 'listening' | 'processing' | 'speaking' }
+{ type: 'widget', payload: WidgetPayload }
+{ type: 'end_response' }
+{ type: 'error', message: '...' }
+```
+
 ## Environment Variables
 
 ```bash
 # backend/.env
-GOOGLE_API_KEY=...      # Required
+GOOGLE_API_KEY=...      # Required for chat and voice
 PORT=8000               # Default
 CORS_ORIGINS=["*"]      # JSON array
 
