@@ -46,6 +46,21 @@ async def upsert_connection(
         return None
 
 
+async def get_connection(user_id: str, provider: str) -> dict[str, Any] | None:
+    if not SUPABASE_ENABLED:
+        logger.warning("Supabase not configured. Skipping wearable connection fetch.")
+        return None
+
+    try:
+        result = SUPABASE.table("wearable_connections").select("*").eq(
+            "user_id", user_id
+        ).eq("provider", provider).maybe_single().execute()
+        return result.data if result.data else None
+    except Exception as exc:
+        logger.exception("Failed to fetch wearable connection: %s", exc)
+        return None
+
+
 async def save_wearable_data(metrics: WearableMetrics) -> dict[str, Any] | None:
     if not SUPABASE_ENABLED:
         logger.warning("Supabase not configured. Skipping wearable data save.")

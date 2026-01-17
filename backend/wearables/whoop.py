@@ -77,6 +77,19 @@ class WhoopClient:
         token_data = response.json()
         return _tokens_from_response(token_data)
 
+    async def fetch_recovery(self, access_token: str, start_date: str, end_date: str) -> dict[str, Any]:
+        headers = {"Authorization": f"Bearer {access_token}"}
+        params = {"start": start_date, "end": end_date}
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{WHOOP_API_BASE}/v1/recovery",
+                headers=headers,
+                params=params,
+                timeout=20.0,
+            )
+        response.raise_for_status()
+        return response.json()
+
 
 def _tokens_from_response(token_data: dict[str, Any]) -> WearableTokens:
     expires_at = None

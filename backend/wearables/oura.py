@@ -71,6 +71,19 @@ class OuraClient:
         token_data = response.json()
         return _tokens_from_response(token_data)
 
+    async def fetch_sleep(self, access_token: str, start_date: str, end_date: str) -> dict[str, Any]:
+        headers = {"Authorization": f"Bearer {access_token}"}
+        params = {"start_date": start_date, "end_date": end_date}
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{OURA_API_BASE}/usercollection/sleep",
+                headers=headers,
+                params=params,
+                timeout=20.0,
+            )
+        response.raise_for_status()
+        return response.json()
+
 
 def _tokens_from_response(token_data: dict[str, Any]) -> WearableTokens:
     expires_at = None

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -11,7 +11,13 @@ from wearables.apple_health import AppleHealthBridge
 from wearables.garmin import GarminClient, parse_garmin_webhook
 from wearables.oura import OuraClient, normalize_sleep_payload
 from wearables.readiness import calculate_readiness
-from wearables.store import resolve_user_id, save_raw_payload, save_wearable_data, upsert_connection
+from wearables.store import (
+    get_connection,
+    resolve_user_id,
+    save_raw_payload,
+    save_wearable_data,
+    upsert_connection,
+)
 from wearables.whoop import WhoopClient, normalize_recovery_payload
 
 wearables_router = APIRouter(prefix="/api/wearables", tags=["wearables"])
@@ -43,6 +49,14 @@ class AppleIngestRequest(BaseModel):
     user_id: str = Field(..., description="User identifier")
     payload: dict[str, Any] = Field(..., description="HealthKit payload")
     data_date: date | None = Field(default=None, description="Optional date override")
+
+
+class SyncResponse(BaseModel):
+    status: str
+    provider: str
+    records: int
+    start_date: str
+    end_date: str
 
 
 @wearables_router.get("/providers")
@@ -163,3 +177,100 @@ async def ingest_apple_health(request: AppleIngestRequest):
         "provider": "apple",
         "records": 1,
     }
+
+
+def _parse_expires_at(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+async def _ensure_tokens(provider: str, user_id: str):
+    client = PROVIDERS.get(provider)
+    if not client or provider == "apple":
+        raise HTTPException(status_code=404, detail="Provider not supported")
+
+    connection = await get_connection(user_id, provider)
+    if not connection:
+        raise HTTPException(status_code=404, detail="Wearable connection not found")
+
+    expires_at = _parse_expires_at(connection.get("token_expires_at"))
+    access_token = connection.get("access_token")
+    refresh_token = connection.get("refresh_token")
+
+    if expires_at and expires_at <= datetime.utcnow() + timedelta(minutes=5):
+        if hasattr(client, "refresh_access_token") and refresh_token:
+            tokens = await client.refresh_access_token(refresh_token)
+            await upsert_connection(user_id, provider, tokens)
+            access_token = tokens.access_token
+
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Access token missing")
+
+    return access_token
+
+
+async def _fetch_and_store(provider: str, user_id: str, start_date: date, end_date: date) -> int:
+    access_token = await _ensure_tokens(provider, user_id)
+
+    payload: dict[str, Any] | None = None
+    metrics_list: list = []
+
+    if provider == "oura":
+        payload = await OURA.fetch_sleep(access_token, start_date.isoformat(), end_date.isoformat())
+        metrics_list = normalize_sleep_payload(payload, user_id)
+    elif provider == "whoop":
+        payload = await WHOOP.fetch_recovery(access_token, start_date.isoformat(), end_date.isoformat())
+        metrics_list = normalize_recovery_payload(payload, user_id)
+    else:
+        raise HTTPException(status_code=501, detail=f"{provider} backfill not implemented yet")
+
+    data_date = metrics_list[0].data_date if metrics_list else None
+    if payload:
+        await save_raw_payload(user_id, provider, "sync", payload, data_date=data_date)
+
+    saved = 0
+    for metrics in metrics_list:
+        metrics.readiness_score = calculate_readiness(metrics)
+        await save_wearable_data(metrics)
+        saved += 1
+
+    return saved
+
+
+@wearables_router.post("/{provider}/backfill", response_model=SyncResponse)
+async def backfill_provider(
+    provider: str,
+    user_id: str = Query(..., description="User identifier"),
+    days: int = Query(default=30, ge=1, le=365),
+):
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    records = await _fetch_and_store(provider, user_id, start_date, end_date)
+    return SyncResponse(
+        status="ok",
+        provider=provider,
+        records=records,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+    )
+
+
+@wearables_router.post("/{provider}/sync", response_model=SyncResponse)
+async def sync_provider(
+    provider: str,
+    user_id: str = Query(..., description="User identifier"),
+):
+    end_date = date.today()
+    start_date = end_date - timedelta(days=1)
+    records = await _fetch_and_store(provider, user_id, start_date, end_date)
+    return SyncResponse(
+        status="ok",
+        provider=provider,
+        records=records,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+    )
