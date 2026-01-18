@@ -265,7 +265,7 @@ export function useVoiceSession(options: UseVoiceSessionOptions = {}): UseVoiceS
 
     // Initialize playback context if needed
     if (!playbackContextRef.current) {
-      playbackContextRef.current = new AudioContext({ sampleRate: 24000 }); // Gemini outputs 24kHz
+      playbackContextRef.current = new AudioContext({ sampleRate: 16000 }); // ElevenLabs pcm_16000
     }
 
     const context = playbackContextRef.current;
@@ -276,7 +276,7 @@ export function useVoiceSession(options: UseVoiceSessionOptions = {}): UseVoiceS
       try {
         // Convert PCM to AudioBuffer
         const pcm = new Int16Array(buffer);
-        const audioBuffer = context.createBuffer(1, pcm.length, 24000);
+        const audioBuffer = context.createBuffer(1, pcm.length, 16000);
         const channelData = audioBuffer.getChannelData(0);
 
         for (let i = 0; i < pcm.length; i++) {

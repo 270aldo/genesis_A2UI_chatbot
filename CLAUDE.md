@@ -222,8 +222,12 @@ Real-time voice interaction using **Gemini Live API (STT + LLM)** and **ElevenLa
 
 ### Audio Format
 - **Input**: PCM 16-bit signed, little-endian, 16kHz mono
-- **Output**: PCM 16-bit signed, little-endian, 24kHz mono (ElevenLabs)
+- **Output**: PCM 16-bit signed, little-endian, 16kHz mono (ElevenLabs pcm_16000)
 - **Transport**: Base64 encoded over JSON WebSocket
+
+### Models
+- **Gemini (STT+LLM)**: `gemini-2.0-flash-exp` (TEXT mode for ElevenLabs handoff)
+- **ElevenLabs (TTS)**: `eleven_turbo_v2_5` (low latency, multilingual)
 
 ### Voice States
 - `idle`: Ready, particles floating gently
