@@ -27,7 +27,7 @@ class ElevenLabsClient:
     
     # Default configuration
     DEFAULT_MODEL = "eleven_turbo_v2_5" # Best for latency + multilingual
-    DEFAULT_VOICE_ID = "JWPjqRAYp7xSgMn6QeWa" # GENESIS_oficial
+    DEFAULT_VOICE_ID = "52mH4ITatkHKLhAdkH2A"  # GENESIS voice
     
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("ELEVENLABS_API_KEY")
