@@ -90,7 +90,8 @@ Frontend expects exactly this structure from `/api/chat`:
 | `backend/agent/cores/*.py` | V3 CORES (Training, Nutrition, etc.) |
 | `backend/tools/generate_widget.py` | Widget tool (40+ types) |
 | `backend/schemas/response.py` | `AgentResponse(text, agent="GENESIS", payload)` |
-| `backend/voice/` | Voice engine module (Gemini Live API) |
+| `backend/voice/` | Voice engine module (Gemini Live + ElevenLabs) |
+| `backend/services/crypto.py` | Fernet encryption for OAuth tokens |
 
 ### Frontend
 | File | Purpose |
@@ -184,7 +185,7 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
 
 ## Voice Engine
 
-Real-time voice interaction using Gemini Live API with bidirectional audio streaming.
+Real-time voice interaction using **Gemini Live API (STT + LLM)** and **ElevenLabs (TTS)**.
 
 ### Architecture
 ```
@@ -192,21 +193,27 @@ Real-time voice interaction using Gemini Live API with bidirectional audio strea
 │  Frontend       │◄──────────────────►│  Backend        │
 │  VoiceMode.tsx  │   /ws/voice        │  voice/router   │
 │  ParticleOrb    │                    │  voice/session  │
-│  useVoiceSession│                    │  voice/gemini   │
+│  useVoiceSession│                    │                 │
 └─────────────────┘                    └────────┬────────┘
                                                 │
-                                       ┌────────▼────────┐
-                                       │  Gemini Live    │
-                                       │  Bidi Streaming │
-                                       └─────────────────┘
+                    ┌───────────────────────────┼───────────────────────────┐
+                    │                           │                           │
+           ┌────────▼────────┐         ┌────────▼────────┐         ┌────────▼────────┐
+           │  Gemini Live    │         │  tts_text_queue │         │  ElevenLabs     │
+           │  STT + LLM      │────────►│  (async queue)  │────────►│  TTS Streaming  │
+           │  TEXT mode      │         │                 │         │  WebSocket      │
+           └─────────────────┘         └─────────────────┘         └─────────────────┘
 ```
+
+**Pipeline**: Audio → Gemini (STT+LLM, TEXT only) → Queue → ElevenLabs (TTS) → Audio
 
 ### Key Files
 | File | Purpose |
 |------|---------|
 | `backend/voice/router.py` | WebSocket `/ws/voice` endpoint |
-| `backend/voice/session.py` | Voice session manager |
-| `backend/voice/gemini_live.py` | Gemini Live API client |
+| `backend/voice/session.py` | Voice session manager + TTS pipeline |
+| `backend/voice/gemini_live.py` | Gemini Live API client (TEXT mode) |
+| `backend/voice/elevenlabs_client.py` | ElevenLabs WebSocket TTS |
 | `backend/voice/audio_utils.py` | PCM encoding/decoding |
 | `frontend/components/voice/VoiceMode.tsx` | Full-screen voice UI |
 | `frontend/components/voice/ParticleOrb.tsx` | Animated orb visualization |
@@ -215,7 +222,7 @@ Real-time voice interaction using Gemini Live API with bidirectional audio strea
 
 ### Audio Format
 - **Input**: PCM 16-bit signed, little-endian, 16kHz mono
-- **Output**: PCM 16-bit signed, little-endian, 24kHz mono
+- **Output**: PCM 16-bit signed, little-endian, 24kHz mono (ElevenLabs)
 - **Transport**: Base64 encoded over JSON WebSocket
 
 ### Voice States
@@ -275,19 +282,27 @@ Project: `genesis_A2UI` (xaxygzwoouaiguyuwpvf)
 ### Migrations
 
 ```bash
-# Migration files location
+# Migration files (timestamp format required by Supabase CLI)
 supabase/migrations/
-├── 001_clipboard_schema.sql   # Initial clipboard
-└── 002_v3_schema_upgrade.sql  # V3 full schema
+├── 20260107000001_clipboard_schema.sql    # Initial clipboard + sessions
+├── 20260107000002_v3_schema_upgrade.sql   # V3 full schema
+└── 20260117000003_security_hardening.sql  # RLS policies (auth.uid())
 ```
+
+### Security
+- **OAuth Token Encryption**: `backend/services/crypto.py` encrypts wearable tokens at rest using Fernet
+- **RLS Policies**: All user tables enforce `auth.uid()::text = user_id`
+- **Graceful Degradation**: If `ENCRYPTION_KEY` not set, tokens stored unencrypted (dev mode)
 
 ## Environment Variables
 
 ```bash
 # backend/.env
-GOOGLE_API_KEY=...      # Required for chat and voice
-PORT=8000               # Default
-CORS_ORIGINS=["*"]      # JSON array
+GOOGLE_API_KEY=...        # Required for chat and voice (Gemini)
+ELEVENLABS_API_KEY=...    # Required for TTS streaming
+ENCRYPTION_KEY=...        # Optional: Fernet key for OAuth token encryption
+PORT=8000                 # Default
+CORS_ORIGINS=["*"]        # JSON array
 
 # Supabase (optional - falls back to mock)
 SUPABASE_URL=https://xaxygzwoouaiguyuwpvf.supabase.co
@@ -296,4 +311,14 @@ SUPABASE_SERVICE_KEY=...
 
 # frontend (via Vite)
 VITE_API_URL=http://localhost:8000  # Backend URL
+```
+
+## CLI Commands
+
+```bash
+# Supabase (use CLI, not MCP plugin)
+supabase login                    # Authenticate
+supabase link --project-ref ...   # Link project
+supabase db push                  # Apply migrations
+supabase migration list           # Check status
 ```
