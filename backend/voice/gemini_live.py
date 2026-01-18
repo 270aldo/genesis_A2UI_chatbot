@@ -18,7 +18,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, List
 
 from google import genai
 from google.genai import types
@@ -147,6 +147,7 @@ class GeminiLiveClient:
         self,
         system_instruction: str,
         voice_name: str | None = None,
+        response_modalities: List[str] | None = None,
     ) -> None:
         """
         Connect to Gemini Live API and initialize session.
@@ -154,26 +155,31 @@ class GeminiLiveClient:
         Args:
             system_instruction: System prompt for GENESIS voice mode
             voice_name: Voice to use (default: Puck)
+            response_modalities: ["AUDIO"] or ["TEXT"] (default: ["AUDIO"])
         """
         if self._connected:
             logger.warning("Already connected, disconnecting first")
             await self.disconnect()
 
         voice = voice_name or self.DEFAULT_VOICE
+        modalities = response_modalities or ["AUDIO"]
 
         # Configuration per official Google documentation
         config = {
-            "response_modalities": ["AUDIO"],
+            "response_modalities": modalities,
             "system_instruction": system_instruction,
-            "speech_config": {
+            "tools": [VOICE_WIDGET_TOOL],
+        }
+        
+        # Only add speech config if AUDIO modality is requested
+        if "AUDIO" in modalities:
+            config["speech_config"] = {
                 "voice_config": {
                     "prebuilt_voice_config": {
                         "voice_name": voice
                     }
                 }
-            },
-            "tools": [VOICE_WIDGET_TOOL],
-        }
+            }
 
         try:
             # aio.live.connect() returns an async context manager
@@ -184,7 +190,7 @@ class GeminiLiveClient:
             )
             self.session = await self._session_cm.__aenter__()
             self._connected = True
-            logger.info(f"Connected to Gemini Live API with voice: {voice}")
+            logger.info(f"Connected to Gemini Live API with modalities: {modalities}")
         except Exception as e:
             logger.error(f"Failed to connect to Gemini Live API: {e}")
             self._session_cm = None
@@ -288,6 +294,7 @@ class GeminiLiveClient:
 
                 # Handle text/transcript
                 if response.text is not None:
+                    # In TEXT-only mode, 'text' field contains the model response
                     yield GeminiEvent(
                         type=GeminiEventType.TRANSCRIPT,
                         text=response.text,

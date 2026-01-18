@@ -1,14 +1,17 @@
 """
 Voice Session Manager
 
-Bridges WebSocket connection from client with Gemini Live API,
-managing the bidirectional audio streaming and state.
+Bridges WebSocket connection from client with Gemini Live API (STT/LLM)
+and ElevenLabs API (TTS), managing the bidirectional audio streaming and state.
+
+Architecture:
+  User Audio -> Gemini Live (STT + LLM) -> Text -> ElevenLabs (TTS) -> Client Audio
 
 Responsibilities:
-- WebSocket <-> Gemini Live bidirectional bridge
+- WebSocket <-> Gemini/ElevenLabs bridge
 - Audio chunk routing
-- State management (idle, listening, processing, speaking)
-- Widget payload queuing and delivery
+- State management
+- Widget payload queuing
 - Session cleanup
 """
 
@@ -16,7 +19,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from fastapi import WebSocket
 
@@ -27,6 +30,7 @@ from .gemini_live import (
     GeminiEventType,
     build_voice_system_prompt,
 )
+from .elevenlabs_client import ElevenLabsClient
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +52,7 @@ class VoiceSessionConfig:
     session_id: str
     user_id: str = "default"
     language: str = "es"
-    voice_name: str | None = None
+    voice_name: str | None = None  # ElevenLabs voice ID
 
 
 @dataclass
@@ -74,8 +78,10 @@ class VoiceSession:
     """
     Manages a single voice conversation session.
 
-    Bridges the WebSocket connection from the frontend with the
-    Gemini Live API, handling bidirectional audio streaming.
+    Orchestrates the flow between:
+    1. Client WebSocket (Audio In/Out)
+    2. Gemini Live API (STT + Intelligence)
+    3. ElevenLabs API (TTS)
     """
 
     # Delay before sending widget after voice ends (ms)
@@ -87,266 +93,273 @@ class VoiceSession:
         config: VoiceSessionConfig,
         user_context: dict[str, Any] | None = None,
     ):
-        """
-        Initialize voice session.
-
-        Args:
-            websocket: FastAPI WebSocket connection
-            config: Session configuration
-            user_context: User context from clipboard (goals, history, etc.)
-        """
         self.websocket = websocket
         self.config = config
         self.user_context = user_context or {}
         self.state = VoiceSessionState()
+        
+        # Clients
         self.gemini_client = GeminiLiveClient()
+        self.elevenlabs_client = ElevenLabsClient()
+        
+        # Queues for text-to-speech pipeline
+        self.tts_text_queue: asyncio.Queue[str | None] = asyncio.Queue()
 
         self._running = False
-        self._client_task: asyncio.Task | None = None
-        self._gemini_task: asyncio.Task | None = None
+        self._tasks: list[asyncio.Task] = []
 
     @property
     def session_id(self) -> str:
-        """Get session ID."""
         return self.config.session_id
 
     @property
     def current_state(self) -> VoiceState:
-        """Get current voice state."""
         return self.state.current_state
 
     async def run(self) -> None:
-        """
-        Main session loop - runs until disconnected.
-
-        Sets up bidirectional streaming between client and Gemini.
-        """
+        """Main session loop."""
         try:
-            # Build system prompt with user context
+            # Build system prompt
             system_prompt = build_voice_system_prompt(
                 user_context=self.user_context,
                 language=self.config.language,
             )
 
-            # Connect to Gemini Live API
+            # Connect to Gemini Live API in TEXT-only output mode
+            # We want Gemini to listen to audio but respond with text + tools
             await self.gemini_client.connect(
                 system_instruction=system_prompt,
-                voice_name=self.config.voice_name,
+                response_modalities=["TEXT"],  # Critical for TTS handoff
             )
 
             self._running = True
 
-            # Send initial state to client
+            # Send initial state
             await self._send_state(VoiceState.IDLE)
 
-            # Run bidirectional streaming
-            await asyncio.gather(
-                self._receive_from_client(),
-                self._receive_from_gemini(),
-            )
+            # Create tasks
+            self._tasks = [
+                asyncio.create_task(self._receive_from_client()),
+                asyncio.create_task(self._receive_from_gemini()),
+                asyncio.create_task(self._process_tts_pipeline()),
+            ]
+
+            # Wait for any task to complete/fail
+            await asyncio.gather(*self._tasks)
 
         except Exception as e:
-            logger.error(f"Voice session error: {e}")
-            await self._send_error(str(e))
+            if self._running: # Only log if not intentional shutdown
+                logger.error(f"Voice session error: {e}")
+                await self._send_error(str(e))
         finally:
             await self.cleanup()
 
     async def cleanup(self) -> None:
-        """Clean up session resources."""
+        """Clean up resources."""
         self._running = False
-
-        # Cancel tasks
-        if self._client_task and not self._client_task.done():
-            self._client_task.cancel()
-        if self._gemini_task and not self._gemini_task.done():
-            self._gemini_task.cancel()
-
-        # Disconnect from Gemini
+        
+        # Cancel all tasks
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        
+        # Disconnect clients
         if self.gemini_client.is_connected:
             await self.gemini_client.disconnect()
-
+            
         logger.info(f"Voice session {self.session_id} cleaned up")
 
-    async def _receive_from_client(self) -> None:
-        """
-        Receive and process messages from WebSocket client.
+    # === Pipeline Components ===
 
-        Handles:
-        - audio_chunk: Forward PCM audio to Gemini
-        - end_turn: User finished speaking
-        - cancel: User interrupted
-        """
+    async def _receive_from_client(self) -> None:
+        """Handle incoming WebSocket messages."""
         try:
             while self._running:
                 message = await self.websocket.receive_json()
                 msg_type = message.get("type")
 
                 if msg_type == "audio_chunk":
-                    # Decode and forward audio to Gemini
                     audio_b64 = message.get("data", "")
                     audio_bytes = decode_audio_base64(audio_b64)
 
-                    # Update state to listening if idle
                     if self.state.current_state == VoiceState.IDLE:
                         await self._send_state(VoiceState.LISTENING)
 
-                    # Calculate audio level for UI feedback
+                    # UI Audio feedback
                     level = calculate_audio_level(audio_bytes)
-                    if level > 0.01:  # Only send significant changes
+                    if level > 0.01:
                         await self._send_audio_level(level)
 
-                    # Forward to Gemini
                     await self.gemini_client.send_audio(audio_bytes)
 
                 elif msg_type == "end_turn":
-                    # User finished speaking
                     await self._send_state(VoiceState.PROCESSING)
                     await self.gemini_client.end_audio_stream()
 
                 elif msg_type == "cancel":
-                    # User interrupted - clear pending state
-                    self.state.pending_widgets.clear()
-                    await self._send_state(VoiceState.IDLE)
+                    await self._handle_interruption()
 
                 elif msg_type == "text":
-                    # Hybrid mode - text input while in voice mode
                     text = message.get("text", "")
                     if text:
                         await self._send_state(VoiceState.PROCESSING)
                         await self.gemini_client.send_text(text)
 
         except Exception as e:
-            if self._running:  # Only log if not intentionally stopped
+            if self._running:
                 logger.error(f"Error receiving from client: {e}")
-                await self._send_error(str(e))
+                raise
 
     async def _receive_from_gemini(self) -> None:
-        """
-        Receive and process events from Gemini Live API.
-
-        Handles:
-        - Audio chunks: Forward to client
-        - Transcripts: Forward to client
-        - Tool calls: Queue widgets for delivery after response
-        - Turn complete: Deliver pending widgets
-        """
+        """Handle Gemini events and route to TTS."""
         try:
             async for event in self.gemini_client.receive():
                 if not self._running:
                     break
 
-                if event.type == GeminiEventType.AUDIO:
-                    # Forward audio to client
-                    if not self.state.is_speaking:
-                        self.state.is_speaking = True
-                        await self._send_state(VoiceState.SPEAKING)
-
-                    await self._send_audio(event.data)
-
-                elif event.type == GeminiEventType.TRANSCRIPT:
-                    # Forward transcript to client
-                    self.state.transcript += event.text or ""
-                    await self._send_transcript(event.text or "", event.is_final)
+                if event.type == GeminiEventType.TRANSCRIPT:
+                    # Gemini sends text chunks. We queue them for ElevenLabs.
+                    if event.text:
+                        await self.tts_text_queue.put(event.text)
+                        # Also forward to client for UI transcript
+                        await self._send_transcript(event.text, event.is_final)
 
                 elif event.type == GeminiEventType.TOOL_CALL:
-                    # Handle tool calls
                     if event.tool_name == "show_widget":
                         await self._handle_widget_tool(event)
-                    else:
-                        logger.warning(f"Unknown tool call: {event.tool_name}")
 
                 elif event.type == GeminiEventType.TURN_COMPLETE:
-                    # Response complete - deliver pending widgets
-                    self.state.is_speaking = False
-                    await self._send_state(VoiceState.IDLE)
-
-                    if self.state.pending_widgets:
-                        # Wait a bit before showing widget
-                        await asyncio.sleep(self.WIDGET_DELAY_MS / 1000)
-                        await self._deliver_pending_widgets()
-
-                    # Reset transcript for next turn
-                    self.state.transcript = ""
-
+                    # Signal end of text generation for this turn
+                    await self.tts_text_queue.put(None) # Sentinel for TTS
+                    
                 elif event.type == GeminiEventType.ERROR:
-                    await self._send_error(event.error or "Unknown Gemini error")
+                    logger.error(f"Gemini error: {event.error}")
 
         except Exception as e:
             if self._running:
                 logger.error(f"Error receiving from Gemini: {e}")
-                await self._send_error(str(e))
+                raise
+
+    async def _process_tts_pipeline(self) -> None:
+        """
+        Consumes text from Gemini and streams audio from ElevenLabs.
+        This runs continuously.
+        """
+        
+        async def text_generator() -> AsyncGenerator[str, None]:
+            """Yields text chunks for a single turn."""
+            while self._running:
+                chunk = await self.tts_text_queue.get()
+                if chunk is None: # End of turn
+                    break
+                yield chunk
+
+        while self._running:
+            # Wait for the first chunk of text to start a TTS stream
+            first_chunk = await self.tts_text_queue.get()
+            
+            # Flush queue if we got a None (end marker) unexpectedly
+            if first_chunk is None:
+                continue
+                
+            # Put it back or use a generator that starts with it
+            async def text_gen_with_first():
+                yield first_chunk
+                async for chunk in text_generator():
+                    yield chunk
+
+            # Start speaking state
+            self.state.is_speaking = True
+            await self._send_state(VoiceState.SPEAKING)
+
+            try:
+                # Stream audio from ElevenLabs
+                # Pass voice_name from config if set (defaults to GENESIS official in client)
+                async for audio_chunk in self.elevenlabs_client.stream_audio(
+                    text_gen_with_first(),
+                    voice_id=self.config.voice_name
+                ):
+                    if not self._running:
+                        break
+                    await self._send_audio(audio_chunk)
+                    
+            except Exception as e:
+                logger.error(f"TTS Streaming error: {e}")
+            finally:
+                # Turn complete logic
+                self.state.is_speaking = False
+                await self._send_state(VoiceState.IDLE)
+                
+                # Deliver widgets after speaking
+                if self.state.pending_widgets:
+                    await asyncio.sleep(self.WIDGET_DELAY_MS / 1000)
+                    await self._deliver_pending_widgets()
+
+    async def _handle_interruption(self) -> None:
+        """Handle user interruption."""
+        # 1. Clear pending TTS text
+        while not self.tts_text_queue.empty():
+            try:
+                self.tts_text_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+        
+        # 2. Clear pending widgets
+        self.state.pending_widgets.clear()
+        
+        # 3. Reset state
+        self.state.is_speaking = False
+        await self._send_state(VoiceState.IDLE)
+        
+        # Note: ElevenLabs WS doesn't have a "cancel" message, 
+        # but stopping sending text effectively stops it.
+        # Ideally we would cancel the current _process_tts_pipeline task iteration.
+
+    # === Helpers ===
 
     async def _handle_widget_tool(self, event: GeminiEvent) -> None:
-        """
-        Handle show_widget tool call from Gemini.
-
-        Queues the widget for delivery after voice response completes.
-        """
         if not event.tool_args:
-            logger.warning("show_widget called without args")
             return
 
         widget_type = event.tool_args.get("widget_type")
         props = event.tool_args.get("props", {})
 
         if widget_type:
-            # Queue widget for delivery after response
             self.state.pending_widgets.append(
                 PendingWidget(widget_type=widget_type, props=props)
             )
-            logger.info(f"Queued widget: {widget_type}")
-
-            # Send tool response to Gemini
+            # Send success to Gemini so it continues flow
             if event.tool_id:
                 await self.gemini_client.send_tool_response(
                     tool_id=event.tool_id,
                     tool_name="show_widget",
-                    result={"status": "queued", "widget_type": widget_type},
+                    result={"status": "queued"}
                 )
 
     async def _deliver_pending_widgets(self) -> None:
-        """Deliver all pending widgets to client."""
         for widget in self.state.pending_widgets:
-            await self.websocket.send_json(
-                {
-                    "type": "widget",
-                    "payload": {
-                        "type": widget.widget_type,
-                        "props": widget.props,
-                    },
-                }
-            )
-            logger.info(f"Delivered widget: {widget.widget_type}")
-
+            await self.websocket.send_json({
+                "type": "widget",
+                "payload": {"type": widget.widget_type, "props": widget.props}
+            })
         self.state.pending_widgets.clear()
 
-    # === WebSocket message senders ===
+    # === WebSocket Senders ===
 
     async def _send_state(self, state: VoiceState) -> None:
-        """Send state update to client."""
         self.state.current_state = state
         await self.websocket.send_json({"type": "state", "value": state.value})
 
     async def _send_audio(self, audio_bytes: bytes) -> None:
-        """Send audio chunk to client."""
         encoded = encode_audio_base64(audio_bytes)
         await self.websocket.send_json({"type": "audio_chunk", "data": encoded})
 
     async def _send_transcript(self, text: str, is_final: bool) -> None:
-        """Send transcript update to client."""
-        await self.websocket.send_json(
-            {"type": "transcript", "text": text, "final": is_final}
-        )
+        await self.websocket.send_json({"type": "transcript", "text": text, "final": is_final})
 
     async def _send_audio_level(self, level: float) -> None:
-        """Send audio level for UI feedback."""
         await self.websocket.send_json({"type": "audio_level", "value": level})
 
     async def _send_error(self, message: str) -> None:
-        """Send error to client."""
         self.state.current_state = VoiceState.ERROR
         await self.websocket.send_json({"type": "error", "message": message})
-
-    async def _send_end_response(self) -> None:
-        """Signal end of response to client."""
-        await self.websocket.send_json({"type": "end_response"})
