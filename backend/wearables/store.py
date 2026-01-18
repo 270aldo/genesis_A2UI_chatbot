@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Any
 
 from services import supabase_client
+from services.crypto import encrypt_string, decrypt_string
 from wearables.models import WearableMetrics, WearableTokens
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,8 @@ async def upsert_connection(
     payload = {
         "user_id": user_id,
         "provider": provider,
-        "access_token": tokens.access_token,
-        "refresh_token": tokens.refresh_token,
+        "access_token": encrypt_string(tokens.access_token),
+        "refresh_token": encrypt_string(tokens.refresh_token),
         "token_expires_at": tokens.expires_at.isoformat() if tokens.expires_at else None,
         "status": status,
         "provider_user_id": tokens.provider_user_id,
@@ -55,7 +56,14 @@ async def get_connection(user_id: str, provider: str) -> dict[str, Any] | None:
         result = SUPABASE.table("wearable_connections").select("*").eq(
             "user_id", user_id
         ).eq("provider", provider).maybe_single().execute()
-        return result.data if result.data else None
+        
+        if result.data:
+            connection = result.data
+            connection["access_token"] = decrypt_string(connection.get("access_token"))
+            connection["refresh_token"] = decrypt_string(connection.get("refresh_token"))
+            return connection
+            
+        return None
     except Exception as exc:
         logger.exception("Failed to fetch wearable connection: %s", exc)
         return None
