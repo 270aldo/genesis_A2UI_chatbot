@@ -113,4 +113,4 @@ async def test_genesis_greeting(integration_client):
     assert data["agent"] == "GENESIS"
     # Should have quick-actions widget
     if data.get("payload"):
-        assert data["payload"]["type"] == "quick-actions"
+        assert data["payload"]["type"] == "genesis-quick-actions"

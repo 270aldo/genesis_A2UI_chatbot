@@ -198,7 +198,7 @@ async def chat(request: ChatRequest, raw_request: Request):
         final_result = None
         all_events = []
         async for event in runner.run_async(
-            user_id="default",
+            user_id=user_id,
             session_id=request.session_id,
             new_message=user_content,
         ):
