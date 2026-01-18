@@ -74,34 +74,6 @@ class SyncAllResponse(BaseModel):
     providers: list[str]
 
 
-@wearables_router.get("/providers")
-async def list_providers() -> dict[str, Any]:
-    return {
-        "providers": [
-            {
-                "id": "garmin",
-                "configured": GARMIN.is_configured(),
-                "oauth": True,
-            },
-            {
-                "id": "oura",
-                "configured": OURA.is_configured(),
-                "oauth": True,
-            },
-            {
-                "id": "whoop",
-                "configured": WHOOP.is_configured(),
-                "oauth": True,
-            },
-            {
-                "id": "apple",
-                "configured": True,
-                "oauth": False,
-            },
-        ]
-    }
-
-
 @wearables_router.get("/health")
 async def wearables_health() -> dict[str, Any]:
     return {
@@ -113,7 +85,7 @@ async def wearables_health() -> dict[str, Any]:
     }
 
 
-@wearables_router.get("/{provider}/auth", response_model=AuthResponse)
+@wearables_router.get("/{provider}/auth")
 async def start_auth(provider: str, state: str | None = Query(default=None)) -> AuthResponse:
     client = PROVIDERS.get(provider)
     if not client or provider == "apple":
@@ -211,7 +183,7 @@ def _parse_expires_at(value: Any) -> datetime | None:
     try:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
-    return None
+        return None
 
 
 async def _ensure_tokens(provider: str, user_id: str):
