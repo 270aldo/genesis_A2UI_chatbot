@@ -112,8 +112,12 @@ class GeminiLiveClient:
     and processes tool calls for widget generation.
     """
 
-    # Model for live audio streaming (Gemini Native Audio)
-    MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+    # Model for native audio (bidirectional audio streaming)
+    MODEL_AUDIO = "gemini-2.5-flash-native-audio-preview-12-2025"
+
+    # Model for TEXT mode (STT + LLM, for ElevenLabs TTS handoff)
+    # Native audio model doesn't support TEXT-only responses
+    MODEL_TEXT = "gemini-2.0-flash-exp"
 
     # Voice configuration
     DEFAULT_VOICE = "Puck"  # Neutral voice, good for ES/EN
@@ -164,13 +168,21 @@ class GeminiLiveClient:
         voice = voice_name or self.DEFAULT_VOICE
         modalities = response_modalities or ["AUDIO"]
 
+        # Select model based on requested modalities
+        # Native audio model only supports AUDIO output
+        # For TEXT-only (ElevenLabs TTS handoff), use standard model
+        if "AUDIO" in modalities:
+            model = self.MODEL_AUDIO
+        else:
+            model = self.MODEL_TEXT
+
         # Configuration per official Google documentation
         config = {
             "response_modalities": modalities,
             "system_instruction": system_instruction,
             "tools": [VOICE_WIDGET_TOOL],
         }
-        
+
         # Only add speech config if AUDIO modality is requested
         if "AUDIO" in modalities:
             config["speech_config"] = {
@@ -185,12 +197,12 @@ class GeminiLiveClient:
             # aio.live.connect() returns an async context manager
             # We manually enter it and store for later cleanup
             self._session_cm = self.client.aio.live.connect(
-                model=self.MODEL,
+                model=model,
                 config=config,
             )
             self.session = await self._session_cm.__aenter__()
             self._connected = True
-            logger.info(f"Connected to Gemini Live API with modalities: {modalities}")
+            logger.info(f"Connected to Gemini Live API: model={model}, modalities={modalities}")
         except Exception as e:
             logger.error(f"Failed to connect to Gemini Live API: {e}")
             self._session_cm = None
@@ -235,7 +247,7 @@ class GeminiLiveClient:
 
         await self.session.send_client_content(
             turns={"parts": [{"text": text}]},
-            end_of_turn=True,
+            turn_complete=True,
         )
 
     async def end_audio_stream(self) -> None:

@@ -88,11 +88,20 @@ async def voice_endpoint(
     except WebSocketDisconnect:
         logger.info(f"Voice WebSocket disconnected: session={effective_session_id}")
     except Exception as e:
-        logger.error(f"Voice session error: {e}")
-        try:
-            await websocket.send_json({"type": "error", "message": str(e)})
-        except Exception:
-            pass  # Connection may already be closed
+        # Check if this is a normal close (code 1000, 1001) or ASGI message after close
+        error_str = str(e)
+        is_expected = (
+            "(1000," in error_str
+            or "(1001," in error_str
+            or "websocket.close" in error_str.lower()
+            or "response already completed" in error_str.lower()
+        )
+        if not is_expected:
+            logger.error(f"Voice session error: {e}")
+            try:
+                await websocket.send_json({"type": "error", "message": str(e)})
+            except Exception:
+                pass  # Connection may already be closed
     finally:
         await session.cleanup()
 
@@ -112,6 +121,8 @@ async def voice_health():
             "bidirectional_audio": True,
             "widget_generation": True,
             "languages": ["es", "en"],
-            "model": "gemini-2.5-flash-native-audio-preview-12-2025",
+            "model_audio": "gemini-2.5-flash-native-audio-preview-12-2025",
+            "model_text": "gemini-2.0-flash-exp",
+            "tts": "elevenlabs",
         },
     }

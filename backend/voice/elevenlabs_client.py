@@ -62,6 +62,7 @@ class ElevenLabsClient:
         try:
             async with websockets.connect(url) as ws:
                 # 1. Send BOS (Beginning of Stream) message with auth
+                # Only use xi_api_key (not authorization header - can't use both)
                 bos_message = {
                     "text": " ",
                     "voice_settings": {
@@ -69,7 +70,6 @@ class ElevenLabsClient:
                         "similarity_boost": 0.75
                     },
                     "xi_api_key": self.api_key,
-                    "authorization": f"Bearer {self.api_key}"
                 }
                 await ws.send(json.dumps(bos_message))
                 

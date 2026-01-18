@@ -97,15 +97,16 @@ class VoiceSession:
         self.config = config
         self.user_context = user_context or {}
         self.state = VoiceSessionState()
-        
+
         # Clients
         self.gemini_client = GeminiLiveClient()
         self.elevenlabs_client = ElevenLabsClient()
-        
+
         # Queues for text-to-speech pipeline
         self.tts_text_queue: asyncio.Queue[str | None] = asyncio.Queue()
 
         self._running = False
+        self._ws_open = True  # Track WebSocket state for safe sending
         self._tasks: list[asyncio.Task] = []
 
     @property
@@ -148,7 +149,11 @@ class VoiceSession:
             await asyncio.gather(*self._tasks)
 
         except Exception as e:
-            if self._running: # Only log if not intentional shutdown
+            # Check if this is a normal WebSocket close
+            error_str = str(e)
+            is_normal_close = "(1000," in error_str or "(1001," in error_str
+
+            if self._running and not is_normal_close:
                 logger.error(f"Voice session error: {e}")
                 await self._send_error(str(e))
         finally:
@@ -157,16 +162,17 @@ class VoiceSession:
     async def cleanup(self) -> None:
         """Clean up resources."""
         self._running = False
-        
+        self._ws_open = False  # Mark WebSocket as closed to prevent further sends
+
         # Cancel all tasks
         for task in self._tasks:
             if not task.done():
                 task.cancel()
-        
+
         # Disconnect clients
         if self.gemini_client.is_connected:
             await self.gemini_client.disconnect()
-            
+
         logger.info(f"Voice session {self.session_id} cleaned up")
 
     # === Pipeline Components ===
@@ -206,7 +212,14 @@ class VoiceSession:
                         await self.gemini_client.send_text(text)
 
         except Exception as e:
-            if self._running:
+            # Check if this is a normal WebSocket close (code 1000 or 1001)
+            error_str = str(e)
+            is_normal_close = "(1000," in error_str or "(1001," in error_str
+            if is_normal_close:
+                self._ws_open = False
+                logger.debug(f"Client disconnected normally: {e}")
+            elif self._running:
+                self._ws_open = False
                 logger.error(f"Error receiving from client: {e}")
                 raise
 
@@ -338,28 +351,41 @@ class VoiceSession:
 
     async def _deliver_pending_widgets(self) -> None:
         for widget in self.state.pending_widgets:
-            await self.websocket.send_json({
+            success = await self._safe_send({
                 "type": "widget",
                 "payload": {"type": widget.widget_type, "props": widget.props}
             })
+            if not success:
+                break  # WebSocket closed, stop trying
         self.state.pending_widgets.clear()
 
     # === WebSocket Senders ===
 
+    async def _safe_send(self, data: dict) -> bool:
+        """Safely send JSON to WebSocket, returns False if WebSocket is closed."""
+        if not self._ws_open:
+            return False
+        try:
+            await self.websocket.send_json(data)
+            return True
+        except Exception:
+            self._ws_open = False
+            return False
+
     async def _send_state(self, state: VoiceState) -> None:
         self.state.current_state = state
-        await self.websocket.send_json({"type": "state", "value": state.value})
+        await self._safe_send({"type": "state", "value": state.value})
 
     async def _send_audio(self, audio_bytes: bytes) -> None:
         encoded = encode_audio_base64(audio_bytes)
-        await self.websocket.send_json({"type": "audio_chunk", "data": encoded})
+        await self._safe_send({"type": "audio_chunk", "data": encoded})
 
     async def _send_transcript(self, text: str, is_final: bool) -> None:
-        await self.websocket.send_json({"type": "transcript", "text": text, "final": is_final})
+        await self._safe_send({"type": "transcript", "text": text, "final": is_final})
 
     async def _send_audio_level(self, level: float) -> None:
-        await self.websocket.send_json({"type": "audio_level", "value": level})
+        await self._safe_send({"type": "audio_level", "value": level})
 
     async def _send_error(self, message: str) -> None:
         self.state.current_state = VoiceState.ERROR
-        await self.websocket.send_json({"type": "error", "message": message})
+        await self._safe_send({"type": "error", "message": message})
