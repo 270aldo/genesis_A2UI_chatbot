@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NGX GENESIS A2UI V3 - Multiagent AI fitness chatbot with React frontend and FastAPI + Google ADK backend. Implements A2UI (AI-to-UI) paradigm where agents generate dynamic widgets based on user intent.
+NGX GENESIS A2UI V4 - Unified AI fitness coach with React frontend and FastAPI + Google ADK backend. Implements A2UI (AI-to-UI) paradigm where the agent generates dynamic widgets based on user intent.
 
-**V3 Architecture**: Consolidated 12 specialists into 6 CORES (Consolidated Orchestrated Response Engines) with stateless operation via Session Clipboard pattern.
+**V4 Architecture**: Single unified GENESIS agent with internal specialization across 6 domains (Training, Nutrition, Recovery, Habits, Analytics, Education). No sub_agents - all knowledge is consolidated in one instruction file.
 
 ## Development Commands
 
@@ -21,7 +21,7 @@ make frontend         # npm run dev
 
 # Testing
 make test             # pytest tests/ -v
-pytest tests/test_routing.py::test_blaze_routing -v  # Single test
+pytest tests/test_routing.py::test_training_domain -v  # Single test
 
 # Docker
 make docker-up        # Full stack in containers
@@ -31,7 +31,7 @@ make docker-down      # Stop containers
 cd backend && adk web ./agent  # Visual agent testing UI
 ```
 
-## Architecture (V3 - CORES)
+## Architecture (V4 - Unified GENESIS)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -42,21 +42,21 @@ cd backend && adk web ./agent  # Visual agent testing UI
                            │ HTTP
 ┌──────────────────────────▼──────────────────────────────────┐
 │                  Backend (FastAPI + ADK)                     │
-│  main.py → Runner.run_async() → Agent delegation            │
+│  main.py → Runner.run_async() → Single GENESIS agent        │
 │  SessionClipboard (Redis + Supabase) for state              │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────┐
-│                    GENESIS Orchestrator                      │
-│  Unified identity - users only see "GENESIS"                │
-│  Routes to 6 stateless CORES based on intent                │
+│                    GENESIS (Unified Agent)                   │
+│  Single agent with internal domain specialization           │
+│  All responses come from "GENESIS"                          │
 ├─────────────────────────────────────────────────────────────┤
-│  Training CORE    → BLAZE+TEMPO (workout, cardio, HIIT)     │
-│  Nutrition CORE   → SAGE+MACRO+NOVA (meals, tracking, supps)│
-│  Recovery CORE    → WAVE+METABOL+ATLAS+LUNA (HRV, sleep)    │
-│  Habits CORE      → SPARK (habits, streaks, check-ins)      │
-│  Analytics CORE   → STELLA (progress, insights, trends)     │
-│  Education CORE   → LOGOS (explanations, TEXT_ONLY)         │
+│  Training    → workout, cardio, HIIT, strength, gym         │
+│  Nutrition   → meals, macros, supplements, hydration        │
+│  Recovery    → HRV, sleep, mobility, pain, cycle            │
+│  Habits      → streaks, check-ins, consistency, motivation  │
+│  Analytics   → progress, insights, trends, metrics          │
+│  Education   → explanations, science, myth-busting (TEXT)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -75,10 +75,10 @@ Frontend expects exactly this structure from `/api/chat`:
 }
 ```
 
-- **V3**: `agent` is ALWAYS "GENESIS" - unified identity regardless of which CORE processed the request
-- `payload` is optional (Education CORE typically returns none)
+- **V4**: `agent` is ALWAYS "GENESIS" - single unified identity
+- `payload` is optional (Education domain typically returns none)
 - `payload.type` determines which React component renders
-- Widget colors are determined by `category` (training, nutrition, recovery, etc.), not by agent
+- Widget colors are determined by `category` (training, nutrition, recovery, etc.)
 
 ## Key Files
 
@@ -86,8 +86,8 @@ Frontend expects exactly this structure from `/api/chat`:
 | File | Purpose |
 |------|---------|
 | `backend/main.py` | FastAPI server, `/api/chat`, response parsing |
-| `backend/agent/genesis.py` | Root orchestrator with `sub_agents=[...]` |
-| `backend/agent/cores/*.py` | V3 CORES (Training, Nutrition, etc.) |
+| `backend/agent/genesis.py` | Unified GENESIS agent (no sub_agents) |
+| `backend/instructions/genesis_unified.txt` | Consolidated instruction file (all 6 domains) |
 | `backend/tools/generate_widget.py` | Widget tool (40+ types) |
 | `backend/schemas/response.py` | `AgentResponse(text, agent="GENESIS", payload)` |
 | `backend/voice/` | Voice engine module (Gemini Live + ElevenLabs) |
@@ -105,16 +105,17 @@ Frontend expects exactly this structure from `/api/chat`:
 
 ## ADK Patterns
 
-### Agent Definition
+### Agent Definition (V4 - No sub_agents)
 ```python
 from google.adk.agents import Agent
 
-agent = Agent(
-    name="agent_name",           # lowercase, unique
-    model="gemini-2.5-flash",    # always use this
-    description="...",           # CRITICAL for routing - include keywords
-    instruction=INSTRUCTION,     # loaded from instructions/*.txt
-    tools=[generate_widget],
+genesis = Agent(
+    name="genesis",
+    model="gemini-2.5-flash",
+    description="GENESIS - Coach unificado de fitness y longevidad...",
+    instruction=GENESIS_INSTRUCTION,  # From genesis_unified.txt
+    tools=[generate_widget, get_user_context, update_user_context],
+    # V4: No sub_agents - all handled internally
 )
 ```
 
@@ -143,45 +144,44 @@ def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
     return {"type": widget_type, "props": props}
 ```
 
-## Agent Routing
+## Domain Routing (V4 - Internal)
 
-| Query Keywords (Spanish) | Agent | Primary Widgets |
-|--------------------------|-------|-----------------|
-| entrenamiento, fuerza, rutina, ejercicio | BLAZE | workout-card, live-session-tracker |
-| nutrición, comida, dieta, macros, calorías | SAGE | meal-plan, recipe-card, smart-grocery-list |
-| hábitos, consistencia, sueño, motivación | SPARK | checklist, daily-checkin, habit-streak |
-| progreso, análisis, datos, mindset | STELLA | insight-card, progress-dashboard |
-| por qué, explícame, concepto | LOGOS | None (TEXT_ONLY) |
-| hola, inicio | GENESIS | quick-actions |
+GENESIS handles all domains internally based on query keywords:
 
-## Adding New CORES (V3)
+| Query Keywords (Spanish) | Domain | Primary Widgets |
+|--------------------------|--------|-----------------|
+| entrenamiento, fuerza, rutina, ejercicio, gym, cardio, HIIT | Training | workout-card, live-session-tracker, cardio-session-tracker |
+| nutricion, comida, dieta, macros, calorias, receta, suplementos | Nutrition | meal-plan, recipe-card, macro-tracker, supplement-stack |
+| recuperacion, HRV, sueno, dolor, movilidad, ciclo | Recovery | recovery-dashboard, hrv-insight, sleep-analysis, cycle-tracker |
+| habitos, consistencia, motivacion, check-in, racha | Habits | checklist, daily-checkin, habit-streak, quote-card |
+| progreso, analisis, datos, metricas, tendencias | Analytics | progress-dashboard, insight-card, body-comp-visualizer |
+| por que, explicame, concepto, ciencia, mito | Education | None (TEXT_ONLY) |
+| hola, inicio | Greeting | quick-actions |
 
-1. Create `backend/agent/cores/new_core.py`
-2. Create `backend/instructions/new_core.txt`
-3. Add to `backend/agent/genesis.py` sub_agents list
-4. Update `backend/agent/cores/__init__.py`
-5. Add routing tests in `backend/tests/`
+## Adding New Domains/Widgets (V4)
 
-**Note**: V3 uses unified GENESIS identity. All responses appear from "GENESIS" regardless of which CORE processed them.
+### Adding Widget to Existing Domain
+1. Document widget schema in `backend/instructions/genesis_unified.txt`
+2. Add props interface in `frontend/components/Widgets.tsx`
+3. Create component with `GlassCard`
+4. Add case to `A2UIMediator` switch
+5. Document in backend tool docstring
 
-## Adding New Widgets
-
-1. Add props interface in `frontend/components/Widgets.tsx`
-2. Create component with `GlassCard` + `AgentBadge`
-3. Add case to `A2UIMediator` switch
-4. Document in backend tool docstring
-5. Update agent instructions
+### Modifying Domain Behavior
+1. Edit relevant section in `backend/instructions/genesis_unified.txt`
+2. Follow the existing pattern (Keywords, Widgets, Guidelines)
+3. Test with domain-specific queries
 
 ## Gotchas
 
-- **Agent `description` is routing logic**: LLM uses it to decide which sub_agent handles query
+- **V4 uses single instruction file**: All domain knowledge is in `genesis_unified.txt`
+- **No sub_agents in V4**: GENESIS handles everything directly
 - **Tool parameters must be simple types**: ADK can't parse `Annotated[Literal[...]]`
 - **`runner.run_async()` returns async generator**: Use `async for`, not `await`
 - **Message must be `types.Content`**: Not raw string
 - **Response may have markdown wrapper**: Parse ` ```json ``` ` blocks
 - **google-adk >= 1.1.0 required**: Not 1.21.0 (conflicts with FastAPI/starlette)
-- **Frontend uses api.ts**: Not geminiService.ts (which was direct Gemini)
-- **CRITICAL - ADK Template Variables**: In instruction `.txt` files, avoid `{ variable }` syntax as ADK interprets curly braces as context variables. Use `(variable)` instead to document payload structures
+- **CRITICAL - ADK Template Variables**: In instruction `.txt` files, avoid `{ variable }` syntax as ADK interprets curly braces. Use `(variable)` instead.
 
 ## Voice Engine
 
@@ -251,18 +251,17 @@ Real-time voice interaction using **Gemini Live API (STT + LLM)** and **ElevenLa
 { type: 'error', message: '...' }
 ```
 
-## Supabase Database (V3 Schema)
+## Supabase Database
 
 Project: `genesis_A2UI` (xaxygzwoouaiguyuwpvf)
 
-### V3 Tables
+### Tables
 
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `sessions` | Clipboard persistence | session_id, user_id, clipboard_data (JSONB), status |
 | `user_profiles` | Extended user profiles | fitness_level, goals, wearables, preferences |
 | `conversation_messages` | Chat history | session_id, role, content, agent, widget_type |
-| `routing_history` | CORE routing analytics | selected_core, confidence, response_time_ms |
 | `wearable_connections` | OAuth tokens | provider (garmin/oura/whoop/apple), tokens, scopes |
 | `wearable_data` | Normalized metrics | HRV, sleep, recovery, steps (24 columns) |
 | `wearable_raw` | Raw API payloads | endpoint, payload (JSONB) |
@@ -271,7 +270,7 @@ Project: `genesis_A2UI` (xaxygzwoouaiguyuwpvf)
 
 | Table | Purpose |
 |-------|---------|
-| `daily_checkins` | Daily check-ins (SPARK) |
+| `daily_checkins` | Daily check-ins |
 | `workout_sessions` | Training sessions |
 | `set_logs` | Exercise set details |
 | `widget_events` | Widget analytics |
@@ -289,7 +288,7 @@ Project: `genesis_A2UI` (xaxygzwoouaiguyuwpvf)
 # Migration files (timestamp format required by Supabase CLI)
 supabase/migrations/
 ├── 20260107000001_clipboard_schema.sql    # Initial clipboard + sessions
-├── 20260107000002_v3_schema_upgrade.sql   # V3 full schema
+├── 20260107000002_v3_schema_upgrade.sql   # Full schema
 └── 20260117000003_security_hardening.sql  # RLS policies (auth.uid())
 ```
 
