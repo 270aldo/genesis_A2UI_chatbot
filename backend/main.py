@@ -398,43 +398,82 @@ def parse_agent_response(events: list) -> AgentResponse:
                 payload = parsed.get("payload")
         except json.JSONDecodeError:
             pass
-    # Scenario 3: Text followed by JSON (find last JSON object)
-    elif "{" in json_text and "}" in json_text:
-        # Find the last complete JSON object in the text
+    # Scenario 3: Text followed by JSON or malformed JSON with parentheses
+    # Handle cases like: "Text...\n(\n  \"text\": \"...\",\n  \"payload\": {...}\n)"
+    elif "{" in json_text or ("(" in json_text and '"text"' in json_text):
         import re
-        # Look for JSON that has "text" and "agent" keys (our expected format)
-        matches = list(re.finditer(r'\{[^{}]*"(?:text|agent)"[^{}]*\{?[^{}]*\}?[^{}]*\}', json_text))
-        if matches:
-            try:
-                # Try to parse the last JSON-like structure
-                last_match = matches[-1].group()
-                # Find the actual JSON boundaries
-                start = json_text.rfind('{"')
-                if start == -1:
-                    start = json_text.rfind('{\n')
-                if start != -1:
-                    # Try to find matching closing brace
-                    depth = 0
-                    end = start
-                    for i, char in enumerate(json_text[start:]):
-                        if char == '{':
-                            depth += 1
-                        elif char == '}':
-                            depth -= 1
-                            if depth == 0:
-                                end = start + i + 1
-                                break
 
-                    json_str = json_text[start:end]
-                    parsed = json.loads(json_str)
-                    prefix = json_text[:start].strip()
+        # First, check for parentheses-wrapped JSON (common LLM mistake)
+        # Pattern: text followed by ( "text": "...", "payload": {...} )
+        paren_match = re.search(r'\(\s*\n?\s*\\?"text\\?"', json_text)
+        if paren_match:
+            # Find the opening paren and try to extract the JSON-like content
+            paren_start = paren_match.start()
+            prefix = json_text[:paren_start].strip()
+            paren_content = json_text[paren_start:]
+
+            # Replace outer parentheses with braces and unescape quotes
+            # Find matching closing paren
+            depth = 0
+            end_idx = 0
+            for i, char in enumerate(paren_content):
+                if char == '(':
+                    depth += 1
+                elif char == ')':
+                    depth -= 1
+                    if depth == 0:
+                        end_idx = i + 1
+                        break
+
+            if end_idx > 0:
+                json_like = paren_content[:end_idx]
+                # Convert ( ) to { } and unescape quotes
+                json_like = json_like[1:-1]  # Remove outer parens
+                json_like = json_like.replace('\\"', '"')  # Unescape quotes
+                json_like = '{' + json_like + '}'
+
+                try:
+                    parsed = json.loads(json_like)
                     parsed_text = parsed.get("text", "")
                     text = f"{prefix}\n\n{parsed_text}".strip() if prefix else parsed_text
-                    # V3: Don't override agent from parsed JSON - always GENESIS
                     if "payload" in parsed:
                         payload = parsed.get("payload")
-            except (json.JSONDecodeError, ValueError):
-                pass
+                except json.JSONDecodeError:
+                    pass
+
+        # Fallback: Look for standard JSON object with braces
+        if payload is None and "{" in json_text:
+            # Find JSON starting with {"text" or { "text" or {\n  "text"
+            start = -1
+            for pattern in ['{"text"', '{ "text"', '{"agent"', '{ "agent"', '{"payload"']:
+                idx = json_text.find(pattern)
+                if idx != -1 and (start == -1 or idx < start):
+                    start = idx
+
+            if start != -1:
+                # Find matching closing brace
+                depth = 0
+                end = start
+                for i, char in enumerate(json_text[start:]):
+                    if char == '{':
+                        depth += 1
+                    elif char == '}':
+                        depth -= 1
+                        if depth == 0:
+                            end = start + i + 1
+                            break
+
+                if end > start:
+                    json_str = json_text[start:end]
+                    try:
+                        parsed = json.loads(json_str)
+                        prefix = json_text[:start].strip()
+                        parsed_text = parsed.get("text", "")
+                        text = f"{prefix}\n\n{parsed_text}".strip() if prefix else parsed_text
+                        if "payload" in parsed:
+                            payload = parsed.get("payload")
+                    except json.JSONDecodeError:
+                        pass
 
     return AgentResponse(
         text=text or "Respuesta procesada",
