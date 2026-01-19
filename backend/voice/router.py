@@ -28,6 +28,8 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from services.auth import resolve_user_id_from_headers
+from services.session_store import get_or_create_session, set_session
+from schemas.clipboard import MessageRole
 
 from .session import VoiceSession, VoiceSessionConfig
 
@@ -72,15 +74,19 @@ async def voice_endpoint(
         language=language,
     )
 
-    # TODO: Load user context from clipboard/database
-    # For now, use empty context
+    # Load user context from SessionClipboard
+    clipboard = await get_or_create_session(effective_session_id, effective_user_id)
     user_context = None
+    if clipboard.user_profile:
+        user_context = clipboard.user_profile.model_dump()
+        logger.debug(f"Loaded user profile for voice session: {effective_user_id}")
 
     # Create and run voice session
     session = VoiceSession(
         websocket=websocket,
         config=config,
         user_context=user_context,
+        clipboard=clipboard,  # Pass clipboard for conversation persistence
     )
 
     try:

@@ -12,14 +12,29 @@
 import { z } from 'zod';
 
 // ============================================
-// AGENT ID (V3: Unified identity)
+// AGENT ID (V4: Unified identity with legacy categorization)
 // ============================================
 
 /**
- * V3: All responses come from GENESIS.
- * Internal CORES are invisible to the user.
+ * V4: All API responses come from GENESIS.
+ * Legacy agent names are kept for internal widget categorization only.
+ * Users only see "GENESIS" - internal routing is hidden.
  */
-export const AgentIdSchema = z.literal('GENESIS');
+export const AgentIdSchema = z.enum([
+  'GENESIS',  // Unified identity (all API responses)
+  // Legacy categories (for internal widget registry only):
+  'SPARK',    // Habits/Mindset
+  'BLAZE',    // Strength training
+  'TEMPO',    // Cardio
+  'ATLAS',    // Mobility/Pain
+  'WAVE',     // Recovery
+  'SAGE',     // Nutrition strategy
+  'MACRO',    // Nutrition tracking
+  'NOVA',     // Supplements
+  'STELLA',   // Analytics
+  'LUNA',     // Hormonal/Cycle
+  'LOGOS',    // Education
+]);
 
 export type AgentId = z.infer<typeof AgentIdSchema>;
 

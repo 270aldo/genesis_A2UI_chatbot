@@ -27,13 +27,14 @@ async def client():
 
 @pytest.mark.anyio
 async def test_health_endpoint(client):
-    """Test health endpoint returns correct structure."""
+    """Test health endpoint returns correct structure (V4 architecture)."""
     response = await client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
     assert "agents" in data
-    assert "genesis" in data["agents"]
+    assert data["agents"]["genesis"] == "active"
+    assert data["architecture"] == "V4-unified"
 
 
 @pytest.mark.anyio

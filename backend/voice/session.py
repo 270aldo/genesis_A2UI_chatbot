@@ -19,7 +19,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 from fastapi import WebSocket
 
@@ -31,6 +31,9 @@ from .gemini_live import (
     build_voice_system_prompt,
 )
 from .elevenlabs_client import ElevenLabsClient
+
+if TYPE_CHECKING:
+    from schemas.clipboard import SessionClipboard
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +95,12 @@ class VoiceSession:
         websocket: WebSocket,
         config: VoiceSessionConfig,
         user_context: dict[str, Any] | None = None,
+        clipboard: "SessionClipboard | None" = None,
     ):
         self.websocket = websocket
         self.config = config
         self.user_context = user_context or {}
+        self.clipboard = clipboard  # For conversation persistence
         self.state = VoiceSessionState()
 
         # Clients
@@ -104,6 +109,10 @@ class VoiceSession:
 
         # Queues for text-to-speech pipeline
         self.tts_text_queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+        # Conversation tracking for persistence
+        self._current_turn_user_text: str = ""
+        self._current_turn_assistant_text: str = ""
 
         self._running = False
         self._ws_open = True  # Track WebSocket state for safe sending
@@ -208,6 +217,8 @@ class VoiceSession:
                 elif msg_type == "text":
                     text = message.get("text", "")
                     if text:
+                        # Capture user text for persistence (hybrid mode)
+                        self._current_turn_user_text = text
                         await self._send_state(VoiceState.PROCESSING)
                         await self.gemini_client.send_text(text)
 
@@ -233,6 +244,8 @@ class VoiceSession:
                 if event.type == GeminiEventType.TRANSCRIPT:
                     # Gemini sends text chunks. We queue them for ElevenLabs.
                     if event.text:
+                        # Accumulate assistant text for persistence
+                        self._current_turn_assistant_text += event.text
                         await self.tts_text_queue.put(event.text)
                         # Also forward to client for UI transcript
                         await self._send_transcript(event.text, event.is_final)
@@ -302,11 +315,19 @@ class VoiceSession:
                 # Turn complete logic
                 self.state.is_speaking = False
                 await self._send_state(VoiceState.IDLE)
-                
+
+                # Determine widget type for persistence
+                widget_type = None
+                if self.state.pending_widgets:
+                    widget_type = self.state.pending_widgets[0].widget_type
+
                 # Deliver widgets after speaking
                 if self.state.pending_widgets:
                     await asyncio.sleep(self.WIDGET_DELAY_MS / 1000)
                     await self._deliver_pending_widgets()
+
+                # Persist conversation turn to clipboard
+                await self._persist_voice_conversation(widget_type=widget_type)
 
     async def _handle_interruption(self) -> None:
         """Handle user interruption."""
@@ -358,6 +379,45 @@ class VoiceSession:
             if not success:
                 break  # WebSocket closed, stop trying
         self.state.pending_widgets.clear()
+
+    async def _persist_voice_conversation(self, widget_type: str | None = None) -> None:
+        """Persist voice conversation turn to SessionClipboard."""
+        if not self.clipboard:
+            return
+
+        # Import here to avoid circular imports
+        from schemas.clipboard import MessageRole
+        from services.session_store import set_session
+
+        try:
+            # Add user message if we captured it
+            if self._current_turn_user_text.strip():
+                self.clipboard.add_message(
+                    role=MessageRole.USER,
+                    content=self._current_turn_user_text.strip(),
+                    agent="GENESIS",
+                )
+
+            # Add assistant response
+            if self._current_turn_assistant_text.strip():
+                self.clipboard.add_message(
+                    role=MessageRole.ASSISTANT,
+                    content=self._current_turn_assistant_text.strip(),
+                    agent="GENESIS",
+                    widget_type=widget_type,
+                )
+
+            # Persist to storage
+            await set_session(self.clipboard)
+
+            # Reset for next turn
+            self._current_turn_user_text = ""
+            self._current_turn_assistant_text = ""
+
+            logger.debug(f"Persisted voice conversation turn for session {self.session_id}")
+
+        except Exception as e:
+            logger.warning(f"Failed to persist voice conversation: {e}")
 
     # === WebSocket Senders ===
 

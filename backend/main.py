@@ -1,8 +1,10 @@
 """
-NGX A2UI Backend - FastAPI Server
+NGX A2UI Backend - FastAPI Server (V4 Architecture)
 
-Main entry point for the multiagent chatbot backend.
-Exposes /api/chat endpoint that connects to ADK agents.
+Main entry point for the unified GENESIS chatbot backend.
+Exposes /api/chat endpoint that connects to ADK agent.
+
+V4: Single GENESIS agent with internal specialization (no sub_agents).
 """
 
 import base64
@@ -10,6 +12,7 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -23,7 +26,7 @@ from schemas.clipboard import MessageRole
 from schemas.request import ChatRequest, EventsRequest
 from schemas.response import AgentResponse
 from services.auth import resolve_user_id_from_request
-from services.session_store import get_or_create_session, set_session
+from services.session_store import get_or_create_session, set_session, session_store
 from wearables import wearables_router
 from voice import voice_router
 
@@ -95,18 +98,30 @@ runner: Runner = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize ADK runner on startup."""
+    """Initialize ADK runner and session store on startup."""
     global runner
-    logger.info("Initializing ADK Runner with GENESIS agent...")
+
+    # Initialize SessionStore (Redis + Supabase)
+    logger.info("Connecting to SessionStore...")
+    await session_store.connect()
+
+    # Initialize ADK Runner
+    logger.info("Initializing ADK Runner with GENESIS agent (V4)...")
     runner = Runner(
         agent=root_agent,
         app_name="ngx-a2ui",
         session_service=session_service,
     )
     logger.info("ADK Runner initialized successfully")
-    logger.info(f"Available agents: genesis, {', '.join([a.name for a in root_agent.sub_agents])}")
+    # V4: Single unified GENESIS agent (no sub_agents)
+    logger.info(f"Active agent: {root_agent.name} (unified architecture)")
+
     yield
-    logger.info("Shutting down...")
+
+    # Cleanup
+    logger.info("Disconnecting from SessionStore...")
+    await session_store.disconnect()
+    logger.info("Shutdown complete")
 
 
 # FastAPI app
@@ -137,9 +152,12 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "agents": ["genesis"] + [a.name for a in root_agent.sub_agents],
+        "agents": {
+            "genesis": "active",  # V4: Unified agent
+        },
         "model": "gemini-2.5-flash",
-        "version": "0.1.0",
+        "version": "0.2.0",  # V4 architecture
+        "architecture": "V4-unified",
     }
 
 
@@ -229,6 +247,40 @@ async def chat(request: ChatRequest, raw_request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def forward_telemetry_to_supabase(events: list) -> int:
+    """
+    Forward telemetry events to Supabase widget_events table.
+
+    Returns the number of events successfully inserted.
+    """
+    if not session_store.supabase:
+        logger.debug("Supabase not configured, skipping telemetry persistence")
+        return 0
+
+    try:
+        # Transform events to Supabase format
+        records = []
+        for event in events:
+            record = {
+                "event_type": event.type,
+                "category": event.category,
+                "timestamp": event.timestamp or datetime.utcnow().isoformat(),
+                "session_id": event.session_id,
+                "user_id": event.user_id,
+                "data": event.data or {},
+            }
+            records.append(record)
+
+        if records:
+            result = session_store.supabase.table("widget_events").insert(records).execute()
+            return len(result.data) if result.data else 0
+
+        return 0
+    except Exception as e:
+        logger.warning(f"Failed to persist telemetry to Supabase: {e}")
+        return 0
+
+
 @app.post("/api/events")
 async def receive_events(request: EventsRequest):
     """
@@ -236,7 +288,7 @@ async def receive_events(request: EventsRequest):
 
     Receives batched events from TelemetryService and:
     1. Logs them for debugging
-    2. Optionally forwards to Supabase (when configured)
+    2. Forwards to Supabase (when configured)
 
     Events include:
     - widget_* - Widget lifecycle (shown, dismissed, completed, etc.)
@@ -259,15 +311,15 @@ async def receive_events(request: EventsRequest):
 
         logger.debug(f"Event categories: {categories}")
 
-        # TODO: Forward to Supabase when configured
-        # supabase_url = os.getenv("SUPABASE_URL")
-        # supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
-        # if supabase_url and supabase_key:
-        #     await forward_to_supabase(request.events)
+        # Forward to Supabase when configured
+        persisted = await forward_telemetry_to_supabase(request.events)
+        if persisted > 0:
+            logger.debug(f"Persisted {persisted} events to Supabase")
 
         return {
             "status": "ok",
             "received": event_count,
+            "persisted": persisted,
             "categories": categories,
         }
 

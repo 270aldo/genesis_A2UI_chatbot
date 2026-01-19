@@ -6,7 +6,7 @@
  * to specific implementation details.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import {
   A2UIMediator,
@@ -59,7 +59,7 @@ describe('A2UIMediator', () => {
     };
 
     render(
-      <A2UIMediator payload={payload} onAction={mockOnAction} agent="BLAZE" />
+      <A2UIMediator payload={payload} onAction={mockOnAction} agent="GENESIS" />
     );
 
     expect(screen.getByText('Upper Body')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('A2UIMediator', () => {
     };
 
     render(
-      <A2UIMediator payload={payload} onAction={mockOnAction} agent="SAGE" />
+      <A2UIMediator payload={payload} onAction={mockOnAction} agent="GENESIS" />
     );
 
     expect(screen.getByText('Breakfast')).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe('A2UIMediator', () => {
     };
 
     const { container } = render(
-      <A2UIMediator payload={payload} onAction={mockOnAction} agent="BLAZE" />
+      <A2UIMediator payload={payload} onAction={mockOnAction} agent="GENESIS" />
     );
 
     // RestTimer renders, verify it has timer elements
@@ -160,21 +160,21 @@ describe('WorkoutCard', () => {
   });
 
   it('should render workout title and category', () => {
-    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="BLAZE" />);
+    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="GENESIS" />);
 
     expect(screen.getByText('Push Day')).toBeInTheDocument();
     expect(screen.getByText('Strength')).toBeInTheDocument();
   });
 
   it('should render all exercises', () => {
-    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="BLAZE" />);
+    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="GENESIS" />);
 
     expect(screen.getByText('Bench Press')).toBeInTheDocument();
     expect(screen.getByText('Shoulder Press')).toBeInTheDocument();
   });
 
   it('should render exercise details', () => {
-    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="BLAZE" />);
+    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="GENESIS" />);
 
     // Check for sets/reps info (may have multiple matches)
     expect(screen.getAllByText(/4/).length).toBeGreaterThan(0);
@@ -182,7 +182,7 @@ describe('WorkoutCard', () => {
   });
 
   it('should have interactive buttons', () => {
-    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="BLAZE" />);
+    render(<WorkoutCard data={workoutData} onAction={mockOnAction} agent="GENESIS" />);
 
     const buttons = screen.getAllByRole('button');
     expect(buttons.length).toBeGreaterThan(0);
@@ -200,13 +200,13 @@ describe('MealPlan', () => {
   };
 
   it('should render total calories', () => {
-    render(<MealPlan data={mealData} agent="SAGE" />);
+    render(<MealPlan data={mealData} agent="GENESIS" />);
 
     expect(screen.getByText(/2200/)).toBeInTheDocument();
   });
 
   it('should render all meals', () => {
-    render(<MealPlan data={mealData} agent="SAGE" />);
+    render(<MealPlan data={mealData} agent="GENESIS" />);
 
     expect(screen.getByText('Oatmeal with Berries')).toBeInTheDocument();
     expect(screen.getByText('Chicken Salad')).toBeInTheDocument();
@@ -214,7 +214,7 @@ describe('MealPlan', () => {
   });
 
   it('should render meal times', () => {
-    render(<MealPlan data={mealData} agent="SAGE" />);
+    render(<MealPlan data={mealData} agent="GENESIS" />);
 
     expect(screen.getByText('07:30')).toBeInTheDocument();
     expect(screen.getByText('12:00')).toBeInTheDocument();
@@ -237,7 +237,7 @@ describe('HydrationTracker', () => {
       <HydrationTracker
         data={hydrationData}
         onAction={mockOnAction}
-        agent="SAGE"
+        agent="GENESIS"
       />
     );
 
@@ -250,7 +250,7 @@ describe('HydrationTracker', () => {
       <HydrationTracker
         data={hydrationData}
         onAction={mockOnAction}
-        agent="SAGE"
+        agent="GENESIS"
       />
     );
 
@@ -262,21 +262,21 @@ describe('HydrationTracker', () => {
 
 describe('RestTimer', () => {
   const timerData = {
-    recommendedSeconds: 90,
-    currentSeconds: 90,
-    label: 'Rest Between Sets',
+    seconds: 90,
+    exerciseName: 'Bench Press',
+    nextExercise: 'Shoulder Press',
     autoStart: false,
   };
 
   it('should render timer component', () => {
-    const { container } = render(<RestTimer data={timerData} agent="BLAZE" />);
+    const { container } = render(<RestTimer data={timerData} agent="GENESIS" />);
 
     // RestTimer is a floating component with SVG circle
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
   it('should display time value', () => {
-    const { container } = render(<RestTimer data={timerData} agent="BLAZE" />);
+    const { container } = render(<RestTimer data={timerData} agent="GENESIS" />);
 
     // RestTimer shows time in a span element
     const timeSpan = container.querySelector('.font-mono');
@@ -284,7 +284,7 @@ describe('RestTimer', () => {
   });
 
   it('should have control buttons', () => {
-    render(<RestTimer data={timerData} agent="BLAZE" />);
+    render(<RestTimer data={timerData} agent="GENESIS" />);
 
     const buttons = screen.getAllByRole('button');
     expect(buttons.length).toBeGreaterThan(0);
@@ -381,19 +381,19 @@ describe('QuoteCard', () => {
   };
 
   it('should render quote text', () => {
-    render(<QuoteCard data={quoteData} agent="SPARK" />);
+    render(<QuoteCard data={quoteData} agent="GENESIS" />);
 
     expect(screen.getByText(/Train hard, rest harder/)).toBeInTheDocument();
   });
 
   it('should render author', () => {
-    render(<QuoteCard data={quoteData} agent="SPARK" />);
+    render(<QuoteCard data={quoteData} agent="GENESIS" />);
 
     expect(screen.getByText(/Coach/)).toBeInTheDocument();
   });
 
   it('should have agent badge', () => {
-    const { container } = render(<QuoteCard data={quoteData} agent="SPARK" />);
+    const { container } = render(<QuoteCard data={quoteData} agent="GENESIS" />);
 
     // Agent badge text may be split across elements
     const agentText = container.textContent;
@@ -408,13 +408,13 @@ describe('HabitStreakFlame', () => {
   };
 
   it('should render streak count', () => {
-    render(<HabitStreakFlame data={streakData} agent="SPARK" />);
+    render(<HabitStreakFlame data={streakData} agent="GENESIS" />);
 
     expect(screen.getByText('7')).toBeInTheDocument();
   });
 
   it('should render motivation message', () => {
-    render(<HabitStreakFlame data={streakData} agent="SPARK" />);
+    render(<HabitStreakFlame data={streakData} agent="GENESIS" />);
 
     // Message is wrapped in quotes by the component
     expect(screen.getByText(/One week strong/)).toBeInTheDocument();
@@ -422,7 +422,7 @@ describe('HabitStreakFlame', () => {
 
   it('should have flame icon', () => {
     const { container } = render(
-      <HabitStreakFlame data={streakData} agent="SPARK" />
+      <HabitStreakFlame data={streakData} agent="GENESIS" />
     );
 
     // Should have SVG flame icons

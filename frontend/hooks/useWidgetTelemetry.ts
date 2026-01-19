@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useRef, useEffect } from 'react';
-import { supabase, getCurrentUserId, WidgetEventInsert } from '../services/supabase';
+import { supabase, getCurrentUserId, WidgetEventInsert, Json } from '../services/supabase';
 
 type EventType = 'render' | 'interact' | 'dismiss' | 'complete' | 'error';
 
@@ -30,12 +30,13 @@ export function useWidgetTelemetry(options: TelemetryOptions) {
           widget_id: widgetId,
           widget_type: widgetType,
           agent_id: agentId,
-          properties: properties || {},
+          properties: (properties || {}) as Json,
           platform: 'web',
           client_version: '1.0.0',
         };
 
-        await supabase.from('widget_events').insert(event);
+        // Type assertion needed when Supabase env vars are empty (dev mode)
+        await (supabase.from('widget_events') as any).insert(event);
       } catch (err) {
         console.warn('Failed to log widget event:', err);
       }
@@ -106,12 +107,13 @@ export function useSimpleTelemetry() {
           event_type: eventType,
           widget_id: `${widgetType}-${Date.now()}`,
           widget_type: widgetType,
-          properties: properties || {},
+          properties: (properties || {}) as Json,
           platform: 'web',
           client_version: '1.0.0',
         };
 
-        await supabase.from('widget_events').insert(event);
+        // Type assertion needed when Supabase env vars are empty (dev mode)
+        await (supabase.from('widget_events') as any).insert(event);
       } catch (err) {
         console.warn('Failed to log event:', err);
       }

@@ -5,7 +5,17 @@
  */
 
 import { useState, useCallback } from 'react';
-import { supabase, getCurrentUserId, WorkoutSession, SetLog } from '../services/supabase';
+import {
+  supabase,
+  getCurrentUserId,
+  WorkoutSession,
+  SetLog,
+} from '../services/supabase';
+import type { Database } from '../services/supabase/types';
+
+type WorkoutSessionInsert = Database['public']['Tables']['workout_sessions']['Insert'];
+type SetLogInsert = Database['public']['Tables']['set_logs']['Insert'];
+type WorkoutSessionUpdate = Database['public']['Tables']['workout_sessions']['Update'];
 
 interface SessionState {
   session: WorkoutSession | null;
@@ -49,15 +59,18 @@ export function useWorkoutSession() {
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
-        const { data, error } = await supabase
-          .from('workout_sessions')
-          .insert({
-            user_id: userId,
-            started_at: new Date().toISOString(),
-            status: 'active',
-            title,
-            session_type: sessionType,
-          })
+        const insertData: WorkoutSessionInsert = {
+          user_id: userId,
+          started_at: new Date().toISOString(),
+          status: 'active',
+          title,
+          session_type: sessionType,
+        };
+
+        // Type assertion needed when Supabase env vars are empty (dev mode)
+        const { data, error } = await (supabase
+          .from('workout_sessions') as any)
+          .insert(insertData)
           .select()
           .single();
 
@@ -83,13 +96,23 @@ export function useWorkoutSession() {
       }
 
       try {
-        const { data: result, error } = await supabase
-          .from('set_logs')
-          .insert({
-            user_id: userId,
-            session_id: state.session.id,
-            ...data,
-          })
+        const insertData: SetLogInsert = {
+          user_id: userId,
+          session_id: state.session.id,
+          exercise_name: data.exercise_name,
+          set_number: data.set_number,
+          weight_kg: data.weight_kg,
+          reps: data.reps,
+          rpe: data.rpe,
+          is_warmup: data.is_warmup,
+          is_pr: data.is_pr,
+          rest_seconds: data.rest_seconds,
+        };
+
+        // Type assertion needed when Supabase env vars are empty (dev mode)
+        const { data: result, error } = await (supabase
+          .from('set_logs') as any)
+          .insert(insertData)
           .select()
           .single();
 
@@ -121,13 +144,20 @@ export function useWorkoutSession() {
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
-        const { data, error } = await supabase
-          .from('workout_sessions')
-          .update({
-            completed_at: new Date().toISOString(),
-            status: 'completed',
-            ...summary,
-          })
+        const updateData: WorkoutSessionUpdate = {
+          completed_at: new Date().toISOString(),
+          status: 'completed',
+          total_volume_kg: summary.total_volume_kg,
+          total_duration_minutes: summary.total_duration_minutes,
+          exercises_completed: summary.exercises_completed,
+          rating: summary.rating,
+          notes: summary.notes,
+        };
+
+        // Type assertion needed when Supabase env vars are empty (dev mode)
+        const { data, error } = await (supabase
+          .from('workout_sessions') as any)
+          .update(updateData)
           .eq('id', state.session.id)
           .select()
           .single();
@@ -150,9 +180,12 @@ export function useWorkoutSession() {
     if (!state.session) return false;
 
     try {
-      const { error } = await supabase
-        .from('workout_sessions')
-        .update({ status: 'cancelled' })
+      const updateData: WorkoutSessionUpdate = { status: 'cancelled' };
+
+      // Type assertion needed when Supabase env vars are empty (dev mode)
+      const { error } = await (supabase
+        .from('workout_sessions') as any)
+        .update(updateData)
         .eq('id', state.session.id);
 
       if (error) throw error;

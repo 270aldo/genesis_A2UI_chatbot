@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, getCurrentUserId, DailyCheckin, DailyCheckinInsert } from '../services/supabase';
+import { supabase, getCurrentUserId, DailyCheckin, DailyCheckinInsert, Json } from '../services/supabase';
 
 interface CheckinState {
   checkin: DailyCheckin | null;
@@ -67,11 +67,17 @@ export function useCheckin() {
         const checkinData: DailyCheckinInsert = {
           user_id: userId,
           checkin_date: today,
-          ...data,
+          sleep_quality: data.sleep_quality,
+          energy_level: data.energy_level,
+          stress_level: data.stress_level,
+          sleep_hours: data.sleep_hours,
+          pain_zones: data.pain_zones as Json | undefined,
+          notes: data.notes,
         };
 
-        const { data: result, error } = await supabase
-          .from('daily_checkins')
+        // Type assertion needed when Supabase env vars are empty (dev mode)
+        const { data: result, error } = await (supabase
+          .from('daily_checkins') as any)
           .upsert(checkinData, { onConflict: 'user_id,checkin_date' })
           .select()
           .single();

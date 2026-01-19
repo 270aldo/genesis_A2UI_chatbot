@@ -74,7 +74,7 @@ export function useTodayCheckin(userId: string): UseSupabaseResult<CheckinRow> {
 
     const result = await getTodayCheckin(userId);
 
-    if (result.error && result.error.code !== 'PGRST116') {
+    if (result.error && ('code' in result.error ? result.error.code : '') !== 'PGRST116') {
       // PGRST116 = no rows returned (not an error for us)
       setError(new Error(result.error.message));
     } else {
@@ -151,7 +151,7 @@ export function useActiveSession(userId: string): UseSupabaseResult<SessionRow> 
 
     const result = await getActiveSession(userId);
 
-    if (result.error && result.error.code !== 'PGRST116') {
+    if (result.error && ('code' in result.error ? result.error.code : '') !== 'PGRST116') {
       setError(new Error(result.error.message));
     } else {
       setData(result.data);

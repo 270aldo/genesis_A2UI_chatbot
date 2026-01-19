@@ -601,7 +601,7 @@ const App: React.FC = () => {
                     markInteracted(widget.id);
                     handleAction(id, d);
                   }}
-                  agent={widget.payload.agentId}
+                  agent="GENESIS"
                 />
               </div>
             ))}
@@ -631,7 +631,7 @@ const App: React.FC = () => {
                     markCompleted(widget.id, d);
                     handleAction(id, d);
                   }}
-                  agent={widget.payload.agentId}
+                  agent="GENESIS"
                 />
               </div>
             ))}
