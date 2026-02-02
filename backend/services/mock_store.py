@@ -60,6 +60,14 @@ class MockStore:
             ],
         }
 
+        self.sessions = {
+            # session_id -> { exercises: { exercise_id: [ {weight, reps, rpe} ] } }
+        }
+        
+        self.habits_log = {
+            # date_str -> { habit_id: status }
+        }
+
     def get_context(self, context_type: str) -> Dict[str, Any]:
         if context_type == "profile":
             return self.profile
@@ -85,6 +93,31 @@ class MockStore:
     def reset_streak(self, streak_type: str):
         if streak_type in self.streaks:
             self.streaks[streak_type] = 0
+
+    def log_set(self, session_id: str, exercise_id: str, set_data: Dict[str, Any]):
+        if session_id not in self.sessions:
+            self.sessions[session_id] = {"exercises": {}}
+        
+        session = self.sessions[session_id]
+        if exercise_id not in session["exercises"]:
+            session["exercises"][exercise_id] = []
+            
+        session["exercises"][exercise_id].append(set_data)
+        self.today["workout_done"] = True
+        return f"Set logged for {exercise_id}: {set_data}"
+
+    def toggle_habit(self, habit_id: str, date: str, status: str):
+        if date not in self.habits_log:
+            self.habits_log[date] = {}
+        
+        self.habits_log[date][habit_id] = status
+        
+        # Simple streak update
+        if status == 'completed':
+            self.increment_streak('checkin') # Simplifying for demo
+            
+        return f"Habit {habit_id} marked as {status} for {date}"
+
 
 # Global instance
 store = MockStore()

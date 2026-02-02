@@ -116,4 +116,31 @@ def update_user_context(context_type: str, data: Dict[str, Any]) -> str:
         store.update_today({"water_ml": current + amount})
         return f"Hidratación registrada: {amount}ml"
 
+    elif context_type == "log_workout_set":
+        # data needs: sessionId, exerciseId, weight, reps, rpe?
+        session_id = data.get("sessionId", "current")
+        exercise_id = data.get("exerciseId", "unknown")
+        set_data = {
+            "weight": data.get("weight"),
+            "reps": data.get("reps"),
+            "rpe": data.get("rpe")
+        }
+        return store.log_set(session_id, exercise_id, set_data)
+
+    elif context_type == "toggle_habit":
+        # data needs: habitId, date, status
+        habit_id = data.get("habitId")
+        date = data.get("date", store.today["date"])
+        status = data.get("status", "completed")
+        return store.toggle_habit(habit_id, date, status)
+
+    elif context_type == "log_metric":
+        # data needs: metric (energy, mood, etc), value
+        metric = data.get("metric")
+        value = data.get("value")
+        if metric and value is not None:
+             store.update_today({metric: value})
+             return f"Metric {metric} updated to {value}"
+        return "Invalid metric data"
+
     return "Tipo de contexto no soportado para actualización."

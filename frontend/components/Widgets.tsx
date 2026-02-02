@@ -234,7 +234,7 @@ interface SmartGroceryListProps {
 interface BodyCompVisualizerProps {
   title: string;
   metrics: string[]; // e.g., ["sleep", "energy"]
-  dataPoints: { date: string; [key: string]: number | string }[];
+  dataPoints: { date: string;[key: string]: number | string }[];
 }
 
 interface PlateCalculatorProps {
@@ -614,6 +614,15 @@ export const ProgressDashboard: React.FC<{ data: DashboardProps; agent?: AgentTy
 export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: string, payload: any) => void; agent?: AgentType }> = ({ data, onAction, agent }) => {
   const meta = getAgentMeta(agent, 'training');
 
+  const handleLogSet = (exerciseName: string, weight: string, reps: string) => {
+    onAction('log_workout_set', {
+      sessionId: data.workoutId,
+      exerciseId: exerciseName, // Simplification for demo
+      weight: parseFloat(weight),
+      reps: parseFloat(reps)
+    });
+  };
+
   return (
     <AgentCard agent={agent} category="training">
       <div className="flex justify-between items-start mb-4">
@@ -623,15 +632,45 @@ export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: stri
         </div>
         <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-white/70">{data.duration}</span>
       </div>
-      <div className="space-y-2 mb-4">
+      <div className="space-y-4 mb-4">
         {data.exercises?.slice(0, 3).map((ex, i) => (
-          <div key={i} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${meta.color}33`, color: meta.color }}>
-              {i + 1}
+          <div key={i} className="bg-white/5 p-3 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${meta.color}33`, color: meta.color }}>
+                  {i + 1}
+                </div>
+                <p className="text-xs text-white font-bold">{ex.name}</p>
+              </div>
+              <p className="text-[10px] text-white/40">{ex.sets} sets x {ex.reps}</p>
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-white">{ex.name}</p>
-              <p className="text-[10px] text-white/40">{ex.sets}×{ex.reps} · {ex.load}</p>
+
+            {/* Micro-Interaction Input */}
+            <div className="flex gap-2 items-center">
+              <input
+                type="number"
+                placeholder={ex.load.replace('kg', '')}
+                className="w-16 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-white/30"
+                id={`weight-${i}`}
+              />
+              <span className="text-[10px] text-white/40">kg</span>
+              <input
+                type="number"
+                placeholder={ex.reps.split('-')[0]}
+                className="w-12 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-white/30"
+                id={`reps-${i}`}
+              />
+              <span className="text-[10px] text-white/40">reps</span>
+              <button
+                onClick={() => {
+                  const w = (document.getElementById(`weight-${i}`) as HTMLInputElement).value || '0';
+                  const r = (document.getElementById(`reps-${i}`) as HTMLInputElement).value || '0';
+                  handleLogSet(ex.name, w, r);
+                }}
+                className="ml-auto px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white transition-colors"
+              >
+                Log
+              </button>
             </div>
           </div>
         ))}
@@ -642,7 +681,7 @@ export const WorkoutCard: React.FC<{ data: WorkoutCardProps; onAction: (id: stri
         </div>
       )}
       <ActionButton color={meta.color} onClick={() => onAction('START_WORKOUT', { id: data.workoutId })}>
-        Comenzar
+        Comenzar Sesión Completa
       </ActionButton>
     </AgentCard>
   );
@@ -733,7 +772,7 @@ export const SleepAnalysis: React.FC<{ data: SleepProps; agent?: AgentType }> = 
         <div className="relative w-16 h-16 flex items-center justify-center">
           <svg className="w-full h-full -rotate-90">
             <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
-            <circle cx="32" cy="32" r="28" stroke={meta.color} strokeWidth="4" fill="none" 
+            <circle cx="32" cy="32" r="28" stroke={meta.color} strokeWidth="4" fill="none"
               strokeDasharray={175} strokeDashoffset={175 - (175 * data.score) / 100} className="transition-all duration-1000" />
           </svg>
           <span className="absolute text-sm font-bold">{data.score}</span>
@@ -785,11 +824,11 @@ export const TimerWidget: React.FC<{ data: TimerProps; agent?: AgentType }> = ({
           {formatTime(timeLeft)}
         </div>
         <div className="flex justify-center gap-3">
-          <button onClick={() => setIsActive(!isActive)} 
+          <button onClick={() => setIsActive(!isActive)}
             className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center hover:bg-opacity-90 transition-all">
             {isActive ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
           </button>
-          <button onClick={() => { setIsActive(false); setTimeLeft(data.seconds); }} 
+          <button onClick={() => { setIsActive(false); setTimeLeft(data.seconds); }}
             className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all">
             <RotateCcw size={20} />
           </button>
@@ -884,16 +923,14 @@ export const ChecklistWidget: React.FC<{ data: ChecklistProps; agent?: AgentType
       <h3 className="font-bold text-white text-sm mb-3">{data.title}</h3>
       <div className="space-y-2">
         {items.map((item, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             onClick={() => toggleItem(i)}
-            className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-              item.checked ? 'bg-[#00FF88]/10 border-[#00FF88]/20 opacity-60' : 'bg-white/5 border-transparent hover:bg-white/10'
-            }`}
+            className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${item.checked ? 'bg-[#00FF88]/10 border-[#00FF88]/20 opacity-60' : 'bg-white/5 border-transparent hover:bg-white/10'
+              }`}
           >
-            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-              item.checked ? 'bg-[#00FF88] border-[#00FF88]' : 'border-white/30'
-            }`}>
+            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${item.checked ? 'bg-[#00FF88] border-[#00FF88]' : 'border-white/30'
+              }`}>
               {item.checked && <CheckCircle2 size={12} className="text-black" />}
             </div>
             <span className={`text-xs ${item.checked ? 'line-through text-white/50' : 'text-white'}`}>{item.text}</span>
@@ -942,16 +979,16 @@ export const DailyCheckIn: React.FC<{ data: DailyCheckInProps; onAction: (id: st
           <div key={q.id}>
             <p className="text-xs text-white/80 mb-2">{q.label}</p>
             {q.type === 'slider' ? (
-              <GlassSlider 
-                min={q.min || 1} 
-                max={q.max || 10} 
-                value={Number(answers[q.id] || q.min || 1)} 
+              <GlassSlider
+                min={q.min || 1}
+                max={q.max || 10}
+                value={Number(answers[q.id] || q.min || 1)}
                 onChange={(val) => handleChange(q.id, val)}
               />
             ) : (
-              <GlassInput 
-                type={q.type} 
-                placeholder="..." 
+              <GlassInput
+                type={q.type}
+                placeholder="..."
                 onChange={(e) => handleChange(q.id, e.target.value)}
               />
             )}
@@ -1033,20 +1070,17 @@ export const GenesisQuickActions: React.FC<{
               <button
                 key={action.id}
                 onClick={() => onAction('widget_action_clicked', { actionId: action.id })}
-                className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left ${
-                  isHighlighted
-                    ? 'bg-violet-500/20 border border-violet-500/40 hover:bg-violet-500/30'
-                    : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20'
-                }`}
+                className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left ${isHighlighted
+                  ? 'bg-violet-500/20 border border-violet-500/40 hover:bg-violet-500/30'
+                  : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20'
+                  }`}
               >
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
-                  isHighlighted ? 'bg-violet-500/30 text-violet-300' : 'bg-white/5 text-white/80'
-                }`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isHighlighted ? 'bg-violet-500/30 text-violet-300' : 'bg-white/5 text-white/80'
+                  }`}>
                   <Icon size={16} />
                 </div>
-                <span className={`text-xs font-bold ${
-                  isHighlighted ? 'text-violet-200' : 'text-white/90'
-                }`}>
+                <span className={`text-xs font-bold ${isHighlighted ? 'text-violet-200' : 'text-white/90'
+                  }`}>
                   {action.label}
                 </span>
               </button>
@@ -1126,11 +1160,10 @@ export const ReadinessCheckin: React.FC<{
                     <button
                       key={option}
                       onClick={() => setValues(prev => ({ ...prev, [field.id]: option }))}
-                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                        values[field.id] === option
-                          ? 'bg-violet-500/30 border border-violet-500/50 text-violet-200'
-                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${values[field.id] === option
+                        ? 'bg-violet-500/30 border border-violet-500/50 text-violet-200'
+                        : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                        }`}
                     >
                       {option}
                     </button>
@@ -1220,11 +1253,10 @@ export const PlanCard: React.FC<{
                   setActiveTab(tab.id);
                   onAction('widget_tab_changed', { tabId: tab.id });
                 }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/50 hover:text-white/80'
-                }`}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${activeTab === tab.id
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:text-white/80'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -1340,13 +1372,12 @@ export const LiveTracker: React.FC<{
               {data.currentExercise.sets.map((set, idx) => (
                 <div
                   key={idx}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
-                    set.logged
-                      ? 'bg-green-500/20 border border-green-500/30'
-                      : idx === data.currentExercise!.sets.findIndex(s => !s.logged)
+                  className={`flex items-center justify-between p-3 rounded-lg ${set.logged
+                    ? 'bg-green-500/20 border border-green-500/30'
+                    : idx === data.currentExercise!.sets.findIndex(s => !s.logged)
                       ? 'bg-violet-500/20 border border-violet-500/40'
                       : 'bg-white/5 border border-white/10'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white/80">Set {set.number}</span>
@@ -1401,16 +1432,14 @@ export const LiveTracker: React.FC<{
               <button
                 key={item.id}
                 onClick={() => onAction('widget_habit_toggled', { itemId: item.id, done: !item.done })}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${
-                  item.done
-                    ? 'bg-green-500/20 border border-green-500/30'
-                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                }`}
+                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${item.done
+                  ? 'bg-green-500/20 border border-green-500/30'
+                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                    item.done ? 'bg-green-500' : 'border border-white/30'
-                  }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${item.done ? 'bg-green-500' : 'border border-white/30'
+                    }`}>
                     {item.done && <Check size={14} className="text-white" />}
                   </div>
                   <span className={`text-sm ${item.done ? 'text-green-300' : 'text-white/80'}`}>
@@ -1548,16 +1577,14 @@ export const WeeklyReviewDashboard: React.FC<{
               <button
                 key={option.id}
                 onClick={() => setSelectedOption(option.id)}
-                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left ${
-                  selectedOption === option.id
-                    ? 'bg-violet-500/30 border border-violet-500/50'
-                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                }`}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left ${selectedOption === option.id
+                  ? 'bg-violet-500/30 border border-violet-500/50'
+                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                  }`}
               >
                 <div>
-                  <div className={`text-sm font-medium ${
-                    selectedOption === option.id ? 'text-violet-200' : 'text-white/90'
-                  }`}>
+                  <div className={`text-sm font-medium ${selectedOption === option.id ? 'text-violet-200' : 'text-white/90'
+                    }`}>
                     {option.label}
                   </div>
                   {option.description && (
@@ -1632,6 +1659,14 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
       weight: parseFloat(weight) || 0,
       reps: parseInt(reps) || 0
     };
+
+    // Granular Action: Log to backend immediately
+    onAction('log_workout_set', {
+      sessionId: data.workoutId,
+      exerciseId: currentExercise.name,
+      weight: newSet.weight,
+      reps: newSet.reps
+    });
 
     // Update local workout log
     setWorkoutLog(prev => {
@@ -1714,13 +1749,12 @@ export const LiveSessionTracker: React.FC<{ data: LiveSessionProps; onAction: (i
         {Array.from({ length: currentExercise.target.sets }).map((_, idx) => (
           <div
             key={idx}
-            className={`flex-1 h-2 rounded-full transition-all ${
-              idx < currentExerciseLog.sets.length
-                ? ''
-                : idx === currentSetIdx
+            className={`flex-1 h-2 rounded-full transition-all ${idx < currentExerciseLog.sets.length
+              ? ''
+              : idx === currentSetIdx
                 ? 'animate-pulse'
                 : 'bg-white/10'
-            }`}
+              }`}
             style={{ background: idx < currentExerciseLog.sets.length ? meta.color : idx === currentSetIdx ? `${meta.color}80` : undefined }}
           />
         ))}
@@ -1803,24 +1837,22 @@ export const SmartGroceryList: React.FC<{ data: SmartGroceryListProps; onAction:
   return (
     <AgentCard agent={agent} category="nutrition">
       <h3 className="font-bold text-white mb-4">{data.title}</h3>
-      
+
       <div className="space-y-6 mb-6">
         {categories.map((cat, cIdx) => (
           <div key={cIdx}>
             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">{cat.name}</p>
             <div className="space-y-2">
               {cat.items.map((item, iIdx) => (
-                <div 
+                <div
                   key={item.id}
                   onClick={() => toggleItem(cIdx, iIdx)}
-                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                    item.checked ? 'bg-[#00FF88]/10 border-[#00FF88]/20 opacity-60' : 'bg-white/5 border-transparent hover:bg-white/10'
-                  }`}
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${item.checked ? 'bg-[#00FF88]/10 border-[#00FF88]/20 opacity-60' : 'bg-white/5 border-transparent hover:bg-white/10'
+                    }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                      item.checked ? 'bg-[#00FF88] border-[#00FF88]' : 'border-white/30'
-                    }`}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${item.checked ? 'bg-[#00FF88] border-[#00FF88]' : 'border-white/30'
+                      }`}>
                       {item.checked && <CheckCircle2 size={12} className="text-black" />}
                     </div>
                     <span className={`text-xs ${item.checked ? 'line-through text-white/50' : 'text-white'}`}>{item.name}</span>
@@ -1860,7 +1892,7 @@ export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAct
   };
 
   const handleClick = (pointIndex: number) => {
-    onAction('ANALYZE_TREND', { 
+    onAction('ANALYZE_TREND', {
       date: points[pointIndex].date,
       metrics: {
         [metricA]: points[pointIndex][metricA],
@@ -1888,42 +1920,42 @@ export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAct
       <div className="relative w-full h-[150px] bg-white/5 rounded-xl border border-white/5 overflow-hidden">
         <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
           {/* Grid lines */}
-          <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-          <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
 
           {/* Metric A Line (Purple) */}
-          <polyline 
-            points={getPoints(metricA)} 
-            fill="none" 
-            stroke="#A855F7" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
+          <polyline
+            points={getPoints(metricA)}
+            fill="none"
+            stroke="#A855F7"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          
+
           {/* Metric B Line (Blue) */}
           {metricB && (
-            <polyline 
-              points={getPoints(metricB)} 
-              fill="none" 
-              stroke="#00D4FF" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
+            <polyline
+              points={getPoints(metricB)}
+              fill="none"
+              stroke="#00D4FF"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               strokeDasharray="4 4"
             />
           )}
 
           {/* Interactive Dots */}
           {points.map((p, i) => {
-             const x = (i / (points.length - 1)) * (width - padding * 2) + padding;
-             return (
-               <g key={i} onClick={() => handleClick(i)} className="cursor-pointer group">
-                 <circle cx={x} cy={height-padding + 10} r="10" fill="transparent" />
-                 <text x={x} y={height - 5} fontSize="8" fill="white" textAnchor="middle" opacity="0.5">{p.date}</text>
-                 <line x1={x} y1={padding} x2={x} y2={height-padding} stroke="white" strokeWidth="1" opacity="0" className="group-hover:opacity-10 transition-opacity" />
-               </g>
-             );
+            const x = (i / (points.length - 1)) * (width - padding * 2) + padding;
+            return (
+              <g key={i} onClick={() => handleClick(i)} className="cursor-pointer group">
+                <circle cx={x} cy={height - padding + 10} r="10" fill="transparent" />
+                <text x={x} y={height - 5} fontSize="8" fill="white" textAnchor="middle" opacity="0.5">{p.date}</text>
+                <line x1={x} y1={padding} x2={x} y2={height - padding} stroke="white" strokeWidth="1" opacity="0" className="group-hover:opacity-10 transition-opacity" />
+              </g>
+            );
           })}
         </svg>
       </div>
@@ -1936,13 +1968,13 @@ export const BodyCompVisualizer: React.FC<{ data: BodyCompVisualizerProps; onAct
 export const PlateCalculator: React.FC<{ data: PlateCalculatorProps; agent?: AgentType }> = ({ data, agent }) => {
   const [weight, setWeight] = useState(data.targetWeight);
   const bar = data.barWeight || 20;
-  
+
   const calculatePlates = (target: number) => {
     if (target < bar) return [];
     let remaining = (target - bar) / 2;
     const plates: number[] = [];
     const available = [25, 20, 15, 10, 5, 2.5, 1.25];
-    
+
     for (const p of available) {
       while (remaining >= p) {
         plates.push(p);
@@ -1957,7 +1989,7 @@ export const PlateCalculator: React.FC<{ data: PlateCalculatorProps; agent?: Age
   return (
     <AgentCard agent={agent} category="training">
       <h3 className="font-bold text-white text-sm mb-4">Calculadora de Carga</h3>
-      
+
       <div className="flex items-center gap-4 mb-6 justify-center">
         <button onClick={() => setWeight(w => w - 2.5)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">-</button>
         <div className="text-center">
@@ -1971,13 +2003,13 @@ export const PlateCalculator: React.FC<{ data: PlateCalculatorProps; agent?: Age
         {/* Barbell end */}
         <div className="absolute left-0 w-full h-2 bg-gray-500 z-0"></div>
         <div className="h-4 w-8 bg-gray-400 z-10 rounded-sm"></div> {/* Collar */}
-        
+
         {plates.map((p, i) => {
           // Visual scaling for plates
           const height = p >= 20 ? 80 : p >= 10 ? 60 : p >= 5 ? 40 : 25;
           const color = p >= 25 ? '#FF0000' : p >= 20 ? '#0000FF' : p >= 10 ? '#00FF00' : '#FFFFFF';
           return (
-            <div key={i} className="w-4 z-10 rounded-sm border border-black/20 flex items-center justify-center shadow-lg" 
+            <div key={i} className="w-4 z-10 rounded-sm border border-black/20 flex items-center justify-center shadow-lg"
               style={{ height: `${height}px`, backgroundColor: color }}>
               {height > 30 && <span className="text-[8px] -rotate-90 font-bold text-black/50">{p}</span>}
             </div>
@@ -2013,11 +2045,11 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentTyp
   const [phase, setPhase] = useState<'Inhalar' | 'Sostener' | 'Exhalar'>('Inhalar');
   const [scale, setScale] = useState(1);
   const meta = getAgentMeta(agent, 'analytics');
-  
+
   useEffect(() => {
     // 4-4-4 Box Breathing loop
     const cycle = async () => {
-      while(true) {
+      while (true) {
         setPhase('Inhalar'); setScale(1.5);
         await new Promise(r => setTimeout(r, 4000));
         setPhase('Sostener');
@@ -2034,16 +2066,16 @@ export const BreathworkGuide: React.FC<{ data: BreathworkProps; agent?: AgentTyp
   return (
     <AgentCard agent={agent} category="analytics">
       <div className="h-48 flex flex-col items-center justify-center py-4 relative overflow-hidden">
-        <div 
+        <div
           className="w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-[4000ms] ease-in-out relative z-10"
           style={{ borderColor: `${meta.color}4D`, transform: `scale(${scale})`, backgroundColor: `${meta.color}${scale === 1.5 ? '33' : '00'}` }}
         >
           <div className="w-2 h-2 bg-white rounded-full"></div>
         </div>
-        
+
         {/* Ripples */}
         <div className="absolute w-full h-full flex items-center justify-center pointer-events-none">
-           <div className={`w-32 h-32 rounded-full border absolute transition-all duration-[4000ms] ${scale === 1.5 ? 'scale-150 opacity-0' : 'scale-50 opacity-100'}`} style={{ borderColor: `${meta.color}33` }} />
+          <div className={`w-32 h-32 rounded-full border absolute transition-all duration-[4000ms] ${scale === 1.5 ? 'scale-150 opacity-0' : 'scale-50 opacity-100'}`} style={{ borderColor: `${meta.color}33` }} />
         </div>
 
         <div className="absolute bottom-4 text-center z-20">
@@ -2113,11 +2145,10 @@ export const MorningCheckin: React.FC<{ data: MorningCheckinProps; onAction: (id
                   <button
                     key={opt}
                     onClick={() => handleChange(q.id, opt)}
-                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                      answers[q.id] === opt
-                        ? 'text-black font-bold'
-                        : 'bg-white/5 text-white/70 hover:bg-white/10'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${answers[q.id] === opt
+                      ? 'text-black font-bold'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                      }`}
                     style={answers[q.id] === opt ? { backgroundColor: meta.color } : {}}
                   >
                     {opt}
@@ -2416,11 +2447,10 @@ export const PainReportInline: React.FC<{ data: PainReportInlineProps; onAction:
             <button
               key={zone}
               onClick={() => setBodyZone(zone)}
-              className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                bodyZone === zone
-                  ? 'text-black font-bold'
-                  : 'bg-white/5 text-white/70 hover:bg-white/10'
-              }`}
+              className={`px-3 py-1.5 rounded-full text-xs transition-all ${bodyZone === zone
+                ? 'text-black font-bold'
+                : 'bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
               style={bodyZone === zone ? { backgroundColor: meta.color } : {}}
             >
               {zoneLabels[zone]}
@@ -3445,15 +3475,14 @@ export const CycleAdjustment: React.FC<{ data: CycleAdjustmentProps; agent?: Age
 };
 
 export const AlertBanner: React.FC<{ data: AlertProps }> = ({ data }) => (
-  <div className={`p-3 rounded-xl border flex items-center gap-3 mb-2 ${
-    data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20'
+  <div className={`p-3 rounded-xl border flex items-center gap-3 mb-2 ${data.type === 'warning' ? 'bg-[#FFB800]/10 border-[#FFB800]/20'
     : data.type === 'error' ? 'bg-[#FF4444]/10 border-[#FF4444]/20'
-    : 'bg-[#00FF88]/10 border-[#00FF88]/20'
-  }`}>
+      : 'bg-[#00FF88]/10 border-[#00FF88]/20'
+    }`}>
     <AlertTriangle size={18} className={
       data.type === 'warning' ? 'text-[#FFB800]'
-      : data.type === 'error' ? 'text-[#FF4444]'
-      : 'text-[#00FF88]'
+        : data.type === 'error' ? 'text-[#FF4444]'
+          : 'text-[#00FF88]'
     } />
     <p className="text-xs text-white/80 flex-1">{data.message}</p>
   </div>

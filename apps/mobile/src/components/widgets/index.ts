@@ -1,0 +1,26 @@
+import { registerWidget } from './A2UIMediator';
+import { QuickActions } from './QuickActions';
+import { WorkoutCard } from './WorkoutCard';
+import { MealPlan } from './MealPlan';
+import { MacroTracker } from './MacroTracker';
+import { RecoveryScore } from './RecoveryScore';
+import { SleepAnalysis } from './SleepAnalysis';
+import { DailyCheckin } from './DailyCheckin';
+import { Checklist } from './Checklist';
+import { ProgressDashboard } from './ProgressDashboard';
+import { InsightCard } from './InsightCard';
+
+registerWidget('quick-actions', QuickActions);
+registerWidget('genesis-quick-actions', QuickActions);
+registerWidget('workout-card', WorkoutCard);
+registerWidget('meal-plan', MealPlan);
+registerWidget('macro-tracker', MacroTracker);
+registerWidget('recovery-score', RecoveryScore);
+registerWidget('sleep-analysis', SleepAnalysis);
+registerWidget('daily-checkin', DailyCheckin);
+registerWidget('checklist', Checklist);
+registerWidget('progress-dashboard', ProgressDashboard);
+registerWidget('insight-card', InsightCard);
+
+export { A2UIMediator, registerWidget } from './A2UIMediator';
+export { FallbackWidget } from './FallbackWidget';

@@ -1,0 +1,5 @@
+{
+  "name": "genesis-a2ui",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"]
+}
