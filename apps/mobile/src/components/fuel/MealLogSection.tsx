@@ -3,6 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { COLORS, withOpacity, TEXT } from '../../theme';
 
 interface FoodItem {
   name: string;
@@ -38,27 +39,30 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ meals }) => {
           <View key={meal.id}>
             <Pressable
               onPress={() => toggle(meal.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${meal.name}, ${meal.kcal} kcal, ${meal.time}`}
+              accessibilityState={{ expanded: isOpen }}
               className="flex-row items-center justify-between p-3 rounded-xl"
               style={{
                 backgroundColor: isOpen
-                  ? 'rgba(34,197,94,0.06)'
-                  : 'rgba(255,255,255,0.02)',
+                  ? withOpacity(COLORS.nutrition, 0.06)
+                  : 'rgba(255,255,255,0.06)',
                 borderWidth: 1,
                 borderColor: isOpen
-                  ? 'rgba(34,197,94,0.15)'
-                  : 'rgba(255,255,255,0.04)',
+                  ? withOpacity(COLORS.nutrition, 0.15)
+                  : 'rgba(255,255,255,0.08)',
               }}
             >
               <View className="flex-row items-center gap-2">
-                <Text className="text-[10px] text-white/25 font-bold w-10">{meal.time}</Text>
+                <Text className="text-xs text-text-muted font-bold w-10">{meal.time}</Text>
                 <Text className="text-sm font-bold text-white/70">{meal.name}</Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <Text className="text-xs text-white/40 font-bold">{meal.kcal} kcal</Text>
+                <Text className="text-xs text-white/60 font-bold">{meal.kcal} kcal</Text>
                 {isOpen ? (
-                  <ChevronUp size={14} color="rgba(255,255,255,0.3)" />
+                  <ChevronUp size={14} color={TEXT.disabled} />
                 ) : (
-                  <ChevronDown size={14} color="rgba(255,255,255,0.3)" />
+                  <ChevronDown size={14} color={TEXT.disabled} />
                 )}
               </View>
             </Pressable>
@@ -70,10 +74,10 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ meals }) => {
               >
                 {meal.items.map((item, idx) => (
                   <View key={idx} className="flex-row items-center justify-between py-1.5">
-                    <Text className="text-xs text-white/50 flex-1">{item.name}</Text>
+                    <Text className="text-xs text-white/65 flex-1">{item.name}</Text>
                     <View className="flex-row items-center gap-3">
-                      <Text className="text-[10px] text-blue-400/60">{item.protein}g P</Text>
-                      <Text className="text-[10px] text-white/30">{item.kcal}</Text>
+                      <Text className="text-xs text-blue-400/60">{item.protein}g P</Text>
+                      <Text className="text-xs text-white/50">{item.kcal}</Text>
                     </View>
                   </View>
                 ))}

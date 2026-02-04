@@ -52,7 +52,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       {(label || showPercentage) && (
         <View className="flex-row justify-between mb-1">
           {label && (
-            <Text className="text-[10px] text-white/50 uppercase font-bold">
+            <Text className="text-xs text-white/65 uppercase font-bold">
               {label}
             </Text>
           )}

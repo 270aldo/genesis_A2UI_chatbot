@@ -24,7 +24,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   strokeWidth = 8,
   progress,
   color,
-  bgColor = 'rgba(255,255,255,0.06)',
+  bgColor = 'rgba(255,255,255,0.10)', // SURFACE.border equivalent
   children,
 }) => {
   const radius = (size - strokeWidth) / 2;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { TrendingUp, TrendingDown, Minus, type LucideIcon } from 'lucide-react-native';
+import { SURFACE, TEXT as TEXT_COLORS } from '../../theme';
 
 interface MetricCardProps {
   label: string;
@@ -27,15 +28,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   const deltaColor =
     deltaDirection === 'up' ? '#22C55E' :
     deltaDirection === 'down' ? '#EF4444' :
-    'rgba(255,255,255,0.3)';
+    TEXT_COLORS.disabled;
 
   return (
     <View
       className="flex-1 p-3 rounded-xl"
       style={{
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: SURFACE.bg,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: SURFACE.border,
       }}
     >
       <View className="flex-row items-center justify-between mb-2">
@@ -50,7 +51,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </View>
       <Text className="text-lg font-black text-white">{value}</Text>
-      <Text className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">
+      <Text className="text-xs text-text-muted uppercase tracking-wider mt-0.5">
         {label}
       </Text>
     </View>

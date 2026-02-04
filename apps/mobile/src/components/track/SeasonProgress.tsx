@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { ProgressBar } from '../ui';
+import { COLORS, withOpacity } from '../../theme';
 
 interface SeasonProgressProps {
   name: string;
@@ -21,8 +22,8 @@ export const SeasonProgress: React.FC<SeasonProgressProps> = ({
     <View>
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-base font-black text-white">{name}</Text>
-        <View className="px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(168,85,247,0.15)' }}>
-          <Text className="text-[10px] font-bold" style={{ color: '#A855F7' }}>
+        <View className="px-2 py-1 rounded-full" style={{ backgroundColor: withOpacity(COLORS.analytics, 0.15) }}>
+          <Text className="text-[10px] font-bold" style={{ color: COLORS.analytics }}>
             {phase}
           </Text>
         </View>
@@ -30,7 +31,7 @@ export const SeasonProgress: React.FC<SeasonProgressProps> = ({
       <ProgressBar
         value={week}
         max={totalWeeks}
-        color="#A855F7"
+        color={COLORS.analytics}
         label={`Semana ${week} de ${totalWeeks}`}
         showPercentage
       />

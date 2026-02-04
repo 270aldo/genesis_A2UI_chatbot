@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { ScrollView, View, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeInDown,
   useSharedValue,
@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { Flame } from 'lucide-react-native';
 import { COLORS } from '@genesis/shared';
 import { ScreenHeader, SectionCard, QuickActionBar, ProgressRing } from '../../src/components/shared';
@@ -24,7 +25,16 @@ import {
   MOCK_QUICK_ACTIONS,
 } from '../../src/data/mockData';
 
+const ACTION_TAB_MAP: Record<string, string> = {
+  checkin: '/mind',
+  scan: '/fuel',
+  train: '/train',
+  learn: '/chat',
+};
+
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const flamePulse = useSharedValue(1);
 
   useEffect(() => {
@@ -49,11 +59,17 @@ export default function HomeScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 80 }}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 20 }}
       >
         {/* Mision del Dia */}
         <SectionCard title="Mision del Dia" delay={100}>
-          <MissionCardRow missions={MOCK_MISSIONS} />
+          <MissionCardRow
+            missions={MOCK_MISSIONS}
+            onPress={(m) => {
+              const tab = m.icon === 'dumbbell' ? '/train' : m.icon === 'utensils' ? '/fuel' : '/mind';
+              router.push(tab as any);
+            }}
+          />
         </SectionCard>
 
         {/* Progreso Semanal */}
@@ -83,7 +99,7 @@ export default function HomeScreen() {
           <GlassCard animated={false}>
             <View className="flex-row items-center gap-2 mb-2">
               <View className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.genesis }} />
-              <Text className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+              <Text className="text-xs font-bold text-white/55 uppercase tracking-widest">
                 GENESIS
               </Text>
             </View>
@@ -91,7 +107,7 @@ export default function HomeScreen() {
               {MOCK_GENESIS_MESSAGE}
             </Text>
             <View className="mt-3">
-              <ActionButton label="Responder" variant="secondary" onPress={() => {}} compact />
+              <ActionButton label="Responder" variant="secondary" onPress={() => router.push('/chat')} compact />
             </View>
           </GlassCard>
         </Animated.View>
@@ -108,19 +124,25 @@ export default function HomeScreen() {
               </Animated.View>
               <View>
                 <Text className="text-lg font-black text-white">{MOCK_STREAK.days} dias</Text>
-                <Text className="text-[10px] text-white/35">Racha activa</Text>
+                <Text className="text-xs text-white/50">Racha activa</Text>
               </View>
             </View>
-            <Text className="text-[10px] text-white/25">Record: {MOCK_STREAK.record} dias</Text>
+            <Text className="text-xs text-white/45">Record: {MOCK_STREAK.record} dias</Text>
           </View>
         </SectionCard>
 
         {/* Quick Actions */}
         <View className="mt-1">
-          <Text className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-5 mb-2">
+          <Text className="text-xs font-bold text-white/50 uppercase tracking-widest px-5 mb-2">
             Acciones Rapidas
           </Text>
-          <QuickActionBar actions={MOCK_QUICK_ACTIONS} />
+          <QuickActionBar
+            actions={MOCK_QUICK_ACTIONS}
+            onPress={(a) => {
+              const target = ACTION_TAB_MAP[a.id];
+              if (target) router.push(target as any);
+            }}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

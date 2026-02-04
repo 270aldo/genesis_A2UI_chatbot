@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Wind, Target, Moon, BookOpen, type LucideIcon } from 'lucide-react-native';
+import { TEXT, withOpacity } from '../../theme';
 
 interface Session {
   id: string;
@@ -36,23 +37,26 @@ export const SessionGrid: React.FC<SessionGridProps> = ({ sessions, onPress }) =
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onPress?.(session);
             }}
+            accessibilityRole="button"
+            accessibilityLabel={`${session.title}: ${session.subtitle}, ${session.duration}`}
             className="rounded-xl p-3 items-center"
             style={{
-              width: '47%',
-              backgroundColor: `${session.color}08`,
+              flex: 1,
+              minWidth: '44%',
+              backgroundColor: withOpacity(session.color, 0.08),
               borderWidth: 1,
-              borderColor: `${session.color}15`,
+              borderColor: withOpacity(session.color, 0.20),
             }}
           >
             <View
               className="w-11 h-11 rounded-full items-center justify-center mb-2"
-              style={{ backgroundColor: `${session.color}15` }}
+              style={{ backgroundColor: withOpacity(session.color, 0.15) }}
             >
               <Icon size={20} color={session.color} />
             </View>
-            <Text className="text-xs font-bold text-white/70">{session.title}</Text>
-            <Text className="text-[10px] text-white/30 mt-0.5">{session.subtitle}</Text>
-            <Text className="text-[9px] text-white/20 mt-1">{session.duration}</Text>
+            <Text className="text-sm font-bold text-white/85">{session.title}</Text>
+            <Text className="text-xs text-white/50 mt-0.5">{session.subtitle}</Text>
+            <Text className="text-xs text-text-muted mt-1">{session.duration}</Text>
           </Pressable>
         );
       })}

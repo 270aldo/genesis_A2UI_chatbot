@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { ProgressRing } from '../shared';
 import { ProgressBar } from '../ui';
+import { COLORS } from '../../theme';
 
 interface MacroData {
   calories: { current: number; target: number };
@@ -20,17 +21,17 @@ export const MacroDashboard: React.FC<MacroDashboardProps> = ({ data }) => {
   return (
     <View className="flex-row gap-4">
       {/* Calorie Ring */}
-      <ProgressRing size={100} progress={calProgress} color="#22C55E" strokeWidth={8}>
+      <ProgressRing size={100} progress={calProgress} color={COLORS.nutrition} strokeWidth={8}>
         <Text className="text-lg font-black text-white">{data.calories.current}</Text>
-        <Text className="text-[8px] text-white/30 uppercase">/ {data.calories.target}</Text>
+        <Text className="text-[11px] text-white/65 uppercase">/ {data.calories.target}</Text>
       </ProgressRing>
 
       {/* Macro Bars */}
       <View className="flex-1 justify-center gap-3">
         <View>
           <View className="flex-row justify-between mb-1">
-            <Text className="text-[10px] font-bold text-white/50">Proteina</Text>
-            <Text className="text-[10px] text-white/30">
+            <Text className="text-xs font-bold text-white/65">Proteina</Text>
+            <Text className="text-xs text-white/65">
               {data.protein.current}/{data.protein.target}g
             </Text>
           </View>
@@ -43,8 +44,8 @@ export const MacroDashboard: React.FC<MacroDashboardProps> = ({ data }) => {
         </View>
         <View>
           <View className="flex-row justify-between mb-1">
-            <Text className="text-[10px] font-bold text-white/50">Carbos</Text>
-            <Text className="text-[10px] text-white/30">
+            <Text className="text-xs font-bold text-white/65">Carbos</Text>
+            <Text className="text-xs text-white/65">
               {data.carbs.current}/{data.carbs.target}g
             </Text>
           </View>
@@ -57,8 +58,8 @@ export const MacroDashboard: React.FC<MacroDashboardProps> = ({ data }) => {
         </View>
         <View>
           <View className="flex-row justify-between mb-1">
-            <Text className="text-[10px] font-bold text-white/50">Grasa</Text>
-            <Text className="text-[10px] text-white/30">
+            <Text className="text-xs font-bold text-white/65">Grasa</Text>
+            <Text className="text-xs text-white/65">
               {data.fat.current}/{data.fat.target}g
             </Text>
           </View>

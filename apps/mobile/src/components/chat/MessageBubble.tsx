@@ -29,7 +29,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAction 
           style={isUser ? { backgroundColor: `${COLORS.genesis}33` } : undefined}
         >
           <MessageText text={message.text} isUser={isUser} />
-          <Text className="text-white/20 text-[10px] mt-1 self-end">
+          <Text className="text-text-muted text-[10px] mt-1 self-end">
             {formatTime(message.timestamp)}
           </Text>
         </View>

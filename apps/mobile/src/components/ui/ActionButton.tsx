@@ -3,6 +3,7 @@ import { Pressable, Text, View, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { COLORS } from '@genesis/shared';
+import { TEXT } from '../../theme';
 
 interface ActionButtonProps {
   label: string;
@@ -40,6 +41,9 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       <Pressable
         onPress={handlePress}
         disabled={isDisabled}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: isDisabled }}
         className={`overflow-hidden rounded-xl ${isDisabled ? 'opacity-50' : ''} ${className}`}
       >
         <LinearGradient
@@ -67,6 +71,9 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     <Pressable
       onPress={handlePress}
       disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled }}
       className={`flex-row items-center justify-center rounded-xl ${
         compact ? 'px-4 py-2' : 'px-6 py-3'
       } ${
@@ -74,7 +81,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       } ${isDisabled ? 'opacity-50' : ''} ${className}`}
     >
       {loading ? (
-        <ActivityIndicator color="rgba(255,255,255,0.6)" size="small" />
+        <ActivityIndicator color={TEXT.secondary} size="small" />
       ) : (
         <>
           {icon && <View className="mr-2">{icon}</View>}

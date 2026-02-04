@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { SURFACE, TEXT as TEXT_COLORS } from '../../theme';
 import {
   Home,
   Dumbbell,
@@ -85,7 +86,7 @@ export const CustomTabBar: React.FC<BottomTabBarProps> = ({
             >
               <Icon
                 size={22}
-                color={isFocused ? config.color : 'rgba(255,255,255,0.35)'}
+                color={isFocused ? config.color : TEXT_COLORS.disabled}
                 strokeWidth={isFocused ? 2.5 : 1.5}
               />
               {isFocused && (
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
   },
   topBorder: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: SURFACE.border,
   },
   tabRow: {
     flexDirection: 'row',

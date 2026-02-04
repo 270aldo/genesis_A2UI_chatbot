@@ -17,7 +17,7 @@ export default function ChatModal() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-bg-dark" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-bg-dark" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="px-5 py-3 flex-row items-center justify-between border-b border-white/5">
         <View className="flex-row items-center gap-2">

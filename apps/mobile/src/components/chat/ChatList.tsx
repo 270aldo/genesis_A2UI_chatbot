@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useMemo } from 'react';
 import { View, Text, FlatList } from 'react-native';
 import { Message } from '@genesis/shared';
 import { COLORS } from '../../theme';
@@ -19,6 +19,8 @@ export const ChatList: React.FC<ChatListProps> = ({ messages, onAction }) => {
     [onAction]
   );
 
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
   if (messages.length === 0) {
     return <EmptyState />;
   }
@@ -26,7 +28,7 @@ export const ChatList: React.FC<ChatListProps> = ({ messages, onAction }) => {
   return (
     <FlatList
       ref={listRef}
-      data={[...messages].reverse()}
+      data={reversedMessages}
       renderItem={renderItem}
       inverted
       keyExtractor={(_, index) => String(index)}

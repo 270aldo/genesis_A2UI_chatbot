@@ -27,6 +27,8 @@ export const ChatFAB: React.FC = () => {
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
       onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel="Abrir chat"
       style={[
         styles.fab,
         { bottom: TAB_BAR_HEIGHT + insets.bottom + 12 },

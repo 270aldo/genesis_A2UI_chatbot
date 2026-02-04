@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Check, Minus } from 'lucide-react-native';
+import { TEXT } from '../../theme';
 
 export type DayStatus = 'done' | 'today' | 'rest' | 'upcoming';
 
@@ -19,7 +20,7 @@ export const WeekdayStrip: React.FC<WeekdayStripProps> = ({
     <View className="flex-row justify-between">
       {days.map((day, i) => (
         <View key={i} className="items-center gap-1.5">
-          <Text className="text-[10px] text-white/30 font-bold">
+          <Text className="text-xs text-white/50 font-bold">
             {day.label || LABELS[i]}
           </Text>
           <View
@@ -29,11 +30,11 @@ export const WeekdayStrip: React.FC<WeekdayStripProps> = ({
                 ? { backgroundColor: `${accentColor}20` }
                 : day.status === 'today'
                   ? { borderWidth: 2, borderColor: accentColor }
-                  : { backgroundColor: 'rgba(255,255,255,0.04)' }
+                  : { backgroundColor: 'rgba(255,255,255,0.07)' } // slightly different from SURFACE.bg intentionally
             }
           >
             {day.status === 'done' && <Check size={12} color={accentColor} strokeWidth={3} />}
-            {day.status === 'rest' && <Minus size={10} color="rgba(255,255,255,0.2)" />}
+            {day.status === 'rest' && <Minus size={10} color={TEXT.disabled} />}
             {day.status === 'today' && (
               <View className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />
             )}

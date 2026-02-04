@@ -44,15 +44,17 @@ export const MissionCardRow: React.FC<MissionCardRowProps> = ({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onPress?.(mission);
             }}
+            accessibilityRole="button"
+            accessibilityLabel={`${mission.title}: ${mission.subtitle}${mission.done ? ', completada' : ''}`}
             className="flex-1 p-3 rounded-xl items-center"
             style={{
               backgroundColor: mission.done
                 ? `${mission.color}10`
-                : 'rgba(255,255,255,0.03)',
+                : 'rgba(255,255,255,0.07)',
               borderWidth: 1,
               borderColor: mission.done
                 ? `${mission.color}30`
-                : 'rgba(255,255,255,0.06)',
+                : 'rgba(255,255,255,0.10)',
             }}
           >
             <View
@@ -60,7 +62,7 @@ export const MissionCardRow: React.FC<MissionCardRowProps> = ({
               style={{
                 backgroundColor: mission.done
                   ? `${mission.color}20`
-                  : 'rgba(255,255,255,0.05)',
+                  : 'rgba(255,255,255,0.08)',
               }}
             >
               {mission.done ? (
@@ -70,12 +72,12 @@ export const MissionCardRow: React.FC<MissionCardRowProps> = ({
               )}
             </View>
             <Text
-              className="text-[11px] font-bold text-white/80 text-center"
+              className="text-xs font-bold text-white/90 text-center"
               numberOfLines={1}
             >
               {mission.title}
             </Text>
-            <Text className="text-[9px] text-white/35 text-center mt-0.5">
+            <Text className="text-[11px] text-white/50 text-center mt-0.5">
               {mission.subtitle}
             </Text>
           </Pressable>

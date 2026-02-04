@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Play, Clock, Check } from 'lucide-react-native';
+import { Play, Pause, Clock, Check } from 'lucide-react-native';
 import { ActionButton } from '../ui';
+import { COLORS, withOpacity, SURFACE, TEXT } from '../../theme';
 
 interface Exercise {
   name: string;
@@ -26,11 +27,12 @@ export const WorkoutSessionView: React.FC<WorkoutSessionViewProps> = ({
   exercises,
 }) => {
   const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});
+  const [isActive, setIsActive] = useState(false);
 
-  const toggleSet = (exerciseName: string, setIndex: number) => {
+  const toggleSet = (exerciseName: string, setIndex: number, totalSets: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCompletedSets((prev) => {
-      const current = prev[exerciseName] ?? Array(4).fill(false);
+      const current = prev[exerciseName] ?? Array(totalSets).fill(false);
       const updated = [...current];
       updated[setIndex] = !updated[setIndex];
       return { ...prev, [exerciseName]: updated };
@@ -43,11 +45,11 @@ export const WorkoutSessionView: React.FC<WorkoutSessionViewProps> = ({
       <View className="flex-row items-center justify-between mb-4">
         <View>
           <Text className="text-base font-black text-white">{title}</Text>
-          <Text className="text-xs text-white/40 mt-0.5">{subtitle}</Text>
+          <Text className="text-xs text-white/55 mt-0.5">{subtitle}</Text>
         </View>
         <View className="flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-white/5">
-          <Clock size={12} color="rgba(255,255,255,0.4)" />
-          <Text className="text-[10px] text-white/40 font-bold">{duration}</Text>
+          <Clock size={12} color={TEXT.muted} />
+          <Text className="text-xs text-text-muted font-bold">{duration}</Text>
         </View>
       </View>
 
@@ -61,17 +63,17 @@ export const WorkoutSessionView: React.FC<WorkoutSessionViewProps> = ({
             key={i}
             className="mb-3 p-3 rounded-xl"
             style={{
-              backgroundColor: 'rgba(255,255,255,0.02)',
+              backgroundColor: 'rgba(255,255,255,0.06)',
               borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.04)',
+              borderColor: SURFACE.border,
             }}
           >
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center gap-2">
-                <Text className="text-[10px] font-bold text-white/25 w-4">{i + 1}</Text>
+                <Text className="text-xs font-bold text-text-muted w-4">{i + 1}</Text>
                 <Text className="text-sm font-bold text-white/80">{exercise.name}</Text>
               </View>
-              <Text className="text-[10px] text-white/30">
+              <Text className="text-xs text-white/50">
                 {exercise.reps} x {exercise.weight}
               </Text>
             </View>
@@ -81,26 +83,29 @@ export const WorkoutSessionView: React.FC<WorkoutSessionViewProps> = ({
               {Array.from({ length: exercise.sets }).map((_, setIdx) => (
                 <Pressable
                   key={setIdx}
-                  onPress={() => toggleSet(exercise.name, setIdx)}
-                  className="w-9 h-9 rounded-lg items-center justify-center"
+                  onPress={() => toggleSet(exercise.name, setIdx, exercise.sets)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: sets[setIdx] ?? false }}
+                  accessibilityLabel={`Set ${setIdx + 1} de ${exercise.name}`}
+                  className="w-11 h-11 rounded-lg items-center justify-center"
                   style={{
                     backgroundColor: sets[setIdx]
-                      ? 'rgba(239,68,68,0.15)'
-                      : 'rgba(255,255,255,0.04)',
+                      ? withOpacity(COLORS.training, 0.15)
+                      : 'rgba(255,255,255,0.07)',
                     borderWidth: 1,
                     borderColor: sets[setIdx]
-                      ? 'rgba(239,68,68,0.3)'
-                      : 'rgba(255,255,255,0.06)',
+                      ? withOpacity(COLORS.training, 0.3)
+                      : SURFACE.border,
                   }}
                 >
                   {sets[setIdx] ? (
                     <Check size={14} color="#EF4444" strokeWidth={3} />
                   ) : (
-                    <Text className="text-[10px] text-white/30 font-bold">S{setIdx + 1}</Text>
+                    <Text className="text-xs text-text-muted font-bold">S{setIdx + 1}</Text>
                   )}
                 </Pressable>
               ))}
-              <Text className="text-[10px] text-white/20 self-center ml-auto">
+              <Text className="text-xs text-text-muted self-center ml-auto">
                 Rest {exercise.rest}
               </Text>
             </View>
@@ -108,13 +113,29 @@ export const WorkoutSessionView: React.FC<WorkoutSessionViewProps> = ({
         );
       })}
 
-      {/* Start button */}
+      {/* Start/Stop button */}
       <View className="mt-2">
         <ActionButton
-          label="Comenzar Entrenamiento"
-          onPress={() => {}}
-          accentColor="#EF4444"
-          icon={<Play size={14} color="white" fill="white" />}
+          label={isActive ? 'Finalizar Sesion' : 'Comenzar Entrenamiento'}
+          onPress={() => {
+            Haptics.notificationAsync(
+              isActive ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning,
+            );
+            if (isActive) {
+              const total = exercises.reduce((sum, e) => sum + e.sets, 0);
+              const done = Object.values(completedSets).reduce(
+                (sum, arr) => sum + arr.filter(Boolean).length, 0,
+              );
+              Alert.alert('Sesion Finalizada', `Completaste ${done}/${total} sets.`);
+              setCompletedSets({});
+            }
+            setIsActive(!isActive);
+          }}
+          accentColor={isActive ? '#22C55E' : '#EF4444'}
+          icon={isActive
+            ? <Check size={14} color="white" strokeWidth={3} />
+            : <Play size={14} color="white" fill="white" />
+          }
         />
       </View>
     </View>

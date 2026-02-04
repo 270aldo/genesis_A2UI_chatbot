@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { WeekdayStrip, type DayStatus } from '../shared';
+import { COLORS, TEXT } from '../../theme';
 
 interface DayPlan {
   label: string;
@@ -15,19 +16,19 @@ interface WeeklyCalendarProps {
 export const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ days }) => {
   return (
     <View>
-      <WeekdayStrip days={days} accentColor="#EF4444" />
+      <WeekdayStrip days={days} accentColor={COLORS.training} />
       <View className="flex-row justify-between mt-2">
         {days.map((day, i) => (
           <View key={i} className="items-center" style={{ width: 28 }}>
             <Text
-              className="text-[8px] text-center"
+              className="text-[11px] text-center"
               style={{
                 color:
                   day.status === 'today'
-                    ? '#EF4444'
+                    ? COLORS.training
                     : day.status === 'done'
-                      ? 'rgba(255,255,255,0.4)'
-                      : 'rgba(255,255,255,0.2)',
+                      ? TEXT.muted
+                      : TEXT.disabled,
               }}
               numberOfLines={1}
             >

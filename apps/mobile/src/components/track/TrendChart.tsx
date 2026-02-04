@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Dimensions } from 'react-native';
 import Svg, { Polyline, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
+import { COLORS, SURFACE } from '../../theme';
 
 type MetricKey = 'strength' | 'composition' | 'adherence' | 'sleep';
 
@@ -10,9 +11,9 @@ interface TrendChartProps {
 }
 
 const METRICS: { key: MetricKey; label: string; color: string; unit: string }[] = [
-  { key: 'strength', label: 'Fuerza', color: '#EF4444', unit: 'kg' },
-  { key: 'composition', label: 'Composicion', color: '#22C55E', unit: '%' },
-  { key: 'adherence', label: 'Adherencia', color: '#A855F7', unit: '%' },
+  { key: 'strength', label: 'Fuerza', color: COLORS.training, unit: 'kg' },
+  { key: 'composition', label: 'Composicion', color: COLORS.nutrition, unit: '%' },
+  { key: 'adherence', label: 'Adherencia', color: COLORS.analytics, unit: '%' },
   { key: 'sleep', label: 'Sueno', color: '#6366F1', unit: 'h' },
 ];
 
@@ -24,17 +25,22 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
   const chartWidth = Dimensions.get('window').width - 40 - PADDING * 2;
 
   const values = data[active];
-  const min = Math.min(...values) * 0.95;
-  const max = Math.max(...values) * 1.05;
+
+  const hasData = values.length > 0;
+  const min = hasData ? Math.min(...values) * 0.95 : 0;
+  const max = hasData ? Math.max(...values) * 1.05 : 1;
   const range = max - min || 1;
 
-  const points = values
-    .map((v, i) => {
-      const x = PADDING + (i / (values.length - 1)) * (chartWidth - PADDING);
-      const y = CHART_HEIGHT - ((v - min) / range) * (CHART_HEIGHT - 20) - 10;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  const points = hasData
+    ? values
+        .map((v, i) => {
+          const divisor = values.length > 1 ? values.length - 1 : 1;
+          const x = PADDING + (i / divisor) * (chartWidth - PADDING);
+          const y = CHART_HEIGHT - ((v - min) / range) * (CHART_HEIGHT - 20) - 10;
+          return `${x},${y}`;
+        })
+        .join(' ')
+    : '';
 
   const metric = METRICS.find((m) => m.key === active)!;
 
@@ -57,7 +63,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
             }}
           >
             <Text
-              className="text-[10px] font-bold"
+              className="text-xs font-bold"
               style={{ color: active === m.key ? m.color : 'rgba(255,255,255,0.3)' }}
             >
               {m.label}
@@ -67,32 +73,40 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
       </View>
 
       {/* Chart */}
-      <View className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-        <Svg width={chartWidth + PADDING} height={CHART_HEIGHT}>
-          <Defs>
-            <LinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={metric.color} stopOpacity={0.15} />
-              <Stop offset="1" stopColor={metric.color} stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width={chartWidth + PADDING} height={CHART_HEIGHT} fill="url(#chartGrad)" />
-          <Polyline
-            points={points}
-            fill="none"
-            stroke={metric.color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </Svg>
+      <View className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
+        {hasData ? (
+          <>
+            <Svg width={chartWidth + PADDING} height={CHART_HEIGHT}>
+              <Defs>
+                <LinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor={metric.color} stopOpacity={0.15} />
+                  <Stop offset="1" stopColor={metric.color} stopOpacity={0} />
+                </LinearGradient>
+              </Defs>
+              <Rect x={0} y={0} width={chartWidth + PADDING} height={CHART_HEIGHT} fill="url(#chartGrad)" />
+              <Polyline
+                points={points}
+                fill="none"
+                stroke={metric.color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
 
-        {/* Labels */}
-        <View className="flex-row justify-between px-3 pb-2">
-          <Text className="text-[9px] text-white/20">8 semanas</Text>
-          <Text className="text-[10px] font-bold" style={{ color: metric.color }}>
-            {values[values.length - 1]}{metric.unit}
-          </Text>
-        </View>
+            {/* Labels */}
+            <View className="flex-row justify-between px-3 pb-2">
+              <Text className="text-xs text-text-muted">8 semanas</Text>
+              <Text className="text-xs font-bold" style={{ color: metric.color }}>
+                {values[values.length - 1]}{metric.unit}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={{ height: CHART_HEIGHT }} className="items-center justify-center">
+            <Text className="text-xs text-white/50">Sin datos</Text>
+          </View>
+        )}
       </View>
     </View>
   );
