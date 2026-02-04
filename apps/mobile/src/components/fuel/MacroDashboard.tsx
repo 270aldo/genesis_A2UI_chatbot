@@ -1,0 +1,75 @@
+import React from 'react';
+import { View, Text } from 'react-native';
+import { ProgressRing } from '../shared';
+import { ProgressBar } from '../ui';
+
+interface MacroData {
+  calories: { current: number; target: number };
+  protein: { current: number; target: number; color: string };
+  carbs: { current: number; target: number; color: string };
+  fat: { current: number; target: number; color: string };
+}
+
+interface MacroDashboardProps {
+  data: MacroData;
+}
+
+export const MacroDashboard: React.FC<MacroDashboardProps> = ({ data }) => {
+  const calProgress = Math.round((data.calories.current / data.calories.target) * 100);
+
+  return (
+    <View className="flex-row gap-4">
+      {/* Calorie Ring */}
+      <ProgressRing size={100} progress={calProgress} color="#22C55E" strokeWidth={8}>
+        <Text className="text-lg font-black text-white">{data.calories.current}</Text>
+        <Text className="text-[8px] text-white/30 uppercase">/ {data.calories.target}</Text>
+      </ProgressRing>
+
+      {/* Macro Bars */}
+      <View className="flex-1 justify-center gap-3">
+        <View>
+          <View className="flex-row justify-between mb-1">
+            <Text className="text-[10px] font-bold text-white/50">Proteina</Text>
+            <Text className="text-[10px] text-white/30">
+              {data.protein.current}/{data.protein.target}g
+            </Text>
+          </View>
+          <ProgressBar
+            value={data.protein.current}
+            max={data.protein.target}
+            color={data.protein.color}
+            height={5}
+          />
+        </View>
+        <View>
+          <View className="flex-row justify-between mb-1">
+            <Text className="text-[10px] font-bold text-white/50">Carbos</Text>
+            <Text className="text-[10px] text-white/30">
+              {data.carbs.current}/{data.carbs.target}g
+            </Text>
+          </View>
+          <ProgressBar
+            value={data.carbs.current}
+            max={data.carbs.target}
+            color={data.carbs.color}
+            height={5}
+          />
+        </View>
+        <View>
+          <View className="flex-row justify-between mb-1">
+            <Text className="text-[10px] font-bold text-white/50">Grasa</Text>
+            <Text className="text-[10px] text-white/30">
+              {data.fat.current}/{data.fat.target}g
+            </Text>
+          </View>
+          <ProgressBar
+            value={data.fat.current}
+            max={data.fat.target}
+            color={data.fat.color}
+            height={5}
+          />
+        </View>
+      </View>
+    </View>
+  );
+};

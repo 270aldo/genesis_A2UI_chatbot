@@ -1,14 +1,20 @@
-import { KeyboardAvoidingView, Platform, View, Text, ActivityIndicator } from 'react-native';
+import { KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { COLORS } from '@genesis/shared';
+import { X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useChat } from '../src/hooks/useChat';
 import { ChatList, ChatInput } from '../src/components/chat';
 
-// Import widgets to trigger registration
-import '../src/components/widgets';
-
-export default function ChatScreen() {
+export default function ChatModal() {
   const { messages, isLoading, sendMessage, handleAction } = useChat();
+  const router = useRouter();
+
+  const handleClose = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.back();
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-bg-dark" edges={['top']}>
@@ -23,9 +29,14 @@ export default function ChatScreen() {
             GENESIS
           </Text>
         </View>
-        {isLoading && (
-          <ActivityIndicator size="small" color={COLORS.genesis} />
-        )}
+        <View className="flex-row items-center gap-3">
+          {isLoading && (
+            <ActivityIndicator size="small" color={COLORS.genesis} />
+          )}
+          <Pressable onPress={handleClose} hitSlop={12}>
+            <X size={20} color="rgba(255,255,255,0.5)" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Chat */}
