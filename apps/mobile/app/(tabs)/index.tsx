@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ScrollView, View, Text } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -16,6 +16,7 @@ import { ScreenHeader, SectionCard, QuickActionBar, ProgressRing } from '../../s
 import { GlassCard, ProgressBar, ActionButton } from '../../src/components/ui';
 import { MissionCardRow, StatPill } from '../../src/components/home';
 import { TAB_BAR_HEIGHT } from '../../src/components/navigation';
+import { useUserStore, useChatStore, useWorkoutStore } from '../../src/stores';
 import {
   MOCK_USER,
   MOCK_MISSIONS,
@@ -37,6 +38,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const flamePulse = useSharedValue(1);
 
+  const todayStats = useUserStore((s) => s.todayStats);
+  const fetchTodayStats = useUserStore((s) => s.fetchTodayStats);
+  const chatMessages = useChatStore((s) => s.messages);
+  const activeSession = useWorkoutStore((s) => s.activeSession);
+
+  useEffect(() => {
+    fetchTodayStats('mobile-user');
+  }, []);
+
   useEffect(() => {
     flamePulse.value = withRepeat(
       withTiming(1.15, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
@@ -48,6 +58,32 @@ export default function HomeScreen() {
   const flameStyle = useAnimatedStyle(() => ({
     transform: [{ scale: flamePulse.value }],
   }));
+
+  // Use real data when available, fallback to mock
+  const streakDays = todayStats.streakDays > 0 ? todayStats.streakDays : MOCK_STREAK.days;
+  const volumeToday = todayStats.totalVolumeKg > 0
+    ? `${Math.round(todayStats.totalVolumeKg).toLocaleString()} kg`
+    : null;
+
+  // Latest GENESIS message from chat store
+  const latestGenesisMessage = useMemo(() => {
+    const assistantMsgs = chatMessages.filter((m) => m.role === 'assistant' && m.text);
+    if (assistantMsgs.length > 0) {
+      const latest = assistantMsgs[assistantMsgs.length - 1];
+      return latest.text.slice(0, 200);
+    }
+    return MOCK_GENESIS_MESSAGE;
+  }, [chatMessages]);
+
+  // Update missions based on real state
+  const missions = useMemo(() => {
+    return MOCK_MISSIONS.map((m) => {
+      if (m.icon === 'dumbbell' && todayStats.workoutsCompleted > 0) {
+        return { ...m, done: true, subtitle: `${todayStats.workoutsCompleted} completados` };
+      }
+      return m;
+    });
+  }, [todayStats.workoutsCompleted]);
 
   return (
     <SafeAreaView className="flex-1 bg-bg-dark" edges={['top']}>
@@ -64,7 +100,7 @@ export default function HomeScreen() {
         {/* Mision del Dia */}
         <SectionCard title="Mision del Dia" delay={100}>
           <MissionCardRow
-            missions={MOCK_MISSIONS}
+            missions={missions}
             onPress={(m) => {
               const tab = m.icon === 'dumbbell' ? '/train' : m.icon === 'utensils' ? '/fuel' : '/mind';
               router.push(tab as any);
@@ -89,7 +125,7 @@ export default function HomeScreen() {
           </View>
           <View className="flex-row gap-2">
             <StatPill value={MOCK_WEEKLY.workouts} label="Entrenos" />
-            <StatPill value={MOCK_WEEKLY.nutrition} label="Nutricion" />
+            <StatPill value={volumeToday ?? MOCK_WEEKLY.nutrition} label={volumeToday ? 'Vol. Hoy' : 'Nutricion'} />
             <StatPill value={MOCK_WEEKLY.sleep} label="Sueno" />
           </View>
         </SectionCard>
@@ -104,7 +140,7 @@ export default function HomeScreen() {
               </Text>
             </View>
             <Text className="text-sm text-white/70 leading-5">
-              {MOCK_GENESIS_MESSAGE}
+              {latestGenesisMessage}
             </Text>
             <View className="mt-3">
               <ActionButton label="Responder" variant="secondary" onPress={() => router.push('/chat')} compact />
@@ -123,7 +159,7 @@ export default function HomeScreen() {
                 <Flame size={20} color="#F97316" fill="#F97316" />
               </Animated.View>
               <View>
-                <Text className="text-lg font-black text-white">{MOCK_STREAK.days} dias</Text>
+                <Text className="text-lg font-black text-white">{streakDays} dias</Text>
                 <Text className="text-xs text-white/50">Racha activa</Text>
               </View>
             </View>
