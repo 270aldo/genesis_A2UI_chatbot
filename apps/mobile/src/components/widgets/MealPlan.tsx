@@ -3,6 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { UtensilsCrossed, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { GlassCard } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 interface Meal {
   name: string;
@@ -36,7 +37,7 @@ export const MealPlan: React.FC<{
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center gap-2">
           <UtensilsCrossed size={16} color={COLORS.nutrition} />
-          <Text className="font-bold text-white text-base">
+          <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>
             {data.title || 'Plan'}
           </Text>
         </View>
@@ -45,7 +46,7 @@ export const MealPlan: React.FC<{
             className="px-2 py-1 rounded"
             style={{ backgroundColor: `${COLORS.nutrition}20` }}
           >
-            <Text className="text-xs font-bold" style={{ color: COLORS.nutrition }}>
+            <Text className="text-xs font-bold" style={{ color: COLORS.nutrition, fontFamily: FONTS.mono }}>
               {totalCal} kcal
             </Text>
           </View>

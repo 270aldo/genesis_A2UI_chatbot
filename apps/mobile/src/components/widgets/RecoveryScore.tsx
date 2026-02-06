@@ -10,6 +10,7 @@ import Animated, {
 import { Gauge } from 'lucide-react-native';
 import { GlassCard } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -65,7 +66,7 @@ export const RecoveryScore: React.FC<{
       {/* Header with score ring */}
       <View className="flex-row items-center justify-between mb-4">
         <View>
-          <Text className="font-bold text-white text-base">Recovery Score</Text>
+          <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>Recovery Score</Text>
           <Text className="text-xs text-white/50 capitalize">{data.status}</Text>
         </View>
         <ScoreRing score={data.score} color={statusColor} />
@@ -163,7 +164,7 @@ const ScoreRing: React.FC<{ score: number; color: string }> = ({ score, color })
         />
       </Svg>
       <View className="absolute inset-0 items-center justify-center">
-        <Text className="text-xl font-bold text-white">{score}</Text>
+        <Text className="text-xl font-bold text-white" style={{ fontFamily: FONTS.monoBold }}>{score}</Text>
       </View>
     </View>
   );

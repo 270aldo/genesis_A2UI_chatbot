@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { GlassCard } from '../ui';
 import { getColorForWidget } from '../../utils/getCategoryColor';
 import { WidgetType } from '@genesis/shared';
+import { FONTS } from '../../theme/fonts';
 
 interface FallbackWidgetProps {
   type: string;
@@ -18,7 +19,7 @@ export const FallbackWidget: React.FC<FallbackWidgetProps> = ({ type }) => {
           className="px-3 py-1 rounded-full mb-2"
           style={{ backgroundColor: `${color}20` }}
         >
-          <Text className="text-xs font-bold" style={{ color }}>
+          <Text className="text-xs font-bold" style={{ color, fontFamily: FONTS.monoBold }}>
             {type}
           </Text>
         </View>

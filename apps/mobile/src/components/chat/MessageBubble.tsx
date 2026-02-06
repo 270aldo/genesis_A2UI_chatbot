@@ -4,6 +4,8 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import type { WidgetType } from '@genesis/shared';
 import { COLORS } from '../../theme';
 import { WidgetMessage } from './WidgetMessage';
+import { SurfaceRenderer } from './SurfaceRenderer';
+import { useSurfaceStore } from '../../stores/surface-store';
 import type { ChatMessage } from '../../lib/a2ui/types';
 
 interface MessageBubbleProps {
@@ -14,6 +16,11 @@ interface MessageBubbleProps {
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAction }) => {
   const isUser = message.role === 'user';
   const isFrozen = message.widget?.state === 'frozen';
+
+  // New path: look up surface by surfaceId
+  const surface = useSurfaceStore((s) =>
+    message.surfaceId ? s.getSurface(message.surfaceId) : undefined,
+  );
 
   return (
     <Animated.View
@@ -37,8 +44,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAction 
         </View>
       ) : null}
 
-      {/* Widget from ChatMessage.widget */}
-      {message.widget && (
+      {/* New path: Surface from SurfaceStore */}
+      {surface && (
+        <View className="w-full mt-2">
+          <SurfaceRenderer surface={surface} onAction={onAction} />
+        </View>
+      )}
+
+      {/* Old path: Widget embedded in ChatMessage (backward compat) */}
+      {!surface && message.widget && (
         <View className={`w-full mt-2 ${isFrozen ? 'opacity-60' : ''}`} pointerEvents={isFrozen ? 'none' : 'auto'}>
           <WidgetMessage
             payload={{

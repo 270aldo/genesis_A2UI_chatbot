@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Activity, Lightbulb } from 'lucide-react-nati
 import type { LucideIcon } from 'lucide-react-native';
 import { GlassCard, ActionButton } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 import { getCategoryForWidget } from '../../utils/getCategoryColor';
 
 const TREND_MAP: Record<string, { Icon: LucideIcon; color: string; label: string }> = {
@@ -42,7 +43,7 @@ export const InsightCard: React.FC<{
     <GlassCard accentColor={accentColor}>
       {/* Header */}
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="font-bold text-white text-sm flex-1 mr-2">
+        <Text className="font-bold text-white text-sm flex-1 mr-2" style={{ fontFamily: FONTS.monoBold }}>
           {data.title}
         </Text>
         {data.trend && (
@@ -68,7 +69,7 @@ export const InsightCard: React.FC<{
         <View className="bg-white/5 rounded-xl p-3 mb-3 flex-row items-center justify-between">
           <Text className="text-xs text-white/50">{data.metric.label}</Text>
           <View className="flex-row items-baseline gap-1">
-            <Text className="text-lg font-bold text-white">
+            <Text className="text-lg font-bold text-white" style={{ fontFamily: FONTS.monoBold }}>
               {data.metric.value}
             </Text>
             {data.metric.change != null && (

@@ -4,385 +4,379 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NGX GENESIS A2UI V4 - Unified AI fitness coach with React web frontend, Expo React Native mobile app, and FastAPI + Google ADK backend. Implements A2UI (AI-to-UI) paradigm where the agent generates dynamic widgets based on user intent.
+NGX GENESIS — Performance & Longevity mobile platform. Expo SDK 54 + React Native 0.81 + NativeWind v4 frontend, FastAPI + Google ADK backend, Supabase database. Implements A2UI (AI-to-UI) protocol where GENESIS agent generates dynamic widget surfaces routed to 3 UI zones.
 
-**V4 Architecture**: Single unified GENESIS agent with internal specialization across 6 domains (Training, Nutrition, Recovery, Habits, Analytics, Education). No sub_agents - all knowledge is consolidated in one instruction file.
+**Architecture**: Single unified GENESIS agent (gemini-2.5-flash) with internal specialization across 6 domains: Training, Nutrition, Recovery, Habits, Analytics, Education. No sub_agents.
 
-**Clients**: Web (`frontend/`) and Mobile (`apps/mobile/`) — both consume the same backend API and render A2UI widgets.
+**Clients**: Mobile (`apps/mobile/`) is the primary client. Web (`frontend/`) exists as legacy reference.
+
+**UI Language**: Spanish (all user-facing text).
 
 ## Development Commands
 
 ```bash
-# Full stack (recommended)
-make dev              # Backend (8000) + Frontend (3000) simultaneously
-make install          # Install all dependencies
-
-# Individual services
-make backend          # python main.py
-make frontend         # npm run dev
-
-# Testing
-make test             # pytest tests/ -v
-pytest tests/test_routing.py::test_training_domain -v  # Single test
-
-# Mobile (Expo)
+# Mobile (primary)
 cd apps/mobile && npx expo start           # Dev server
-cd apps/mobile && npx expo start --ios     # Launch iOS simulator
+cd apps/mobile && npx expo start --ios     # iOS simulator
 cd apps/mobile && npx tsc --noEmit         # TypeScript check
 
+# Backend
+cd backend && python main.py               # FastAPI on port 8000
+cd backend && adk web ./agent              # ADK visual testing UI
+
+# Full stack
+make dev              # Backend (8000) + Frontend (3000)
+make install          # Install all dependencies
+make test             # pytest tests/ -v
+
 # Docker
-make docker-up        # Full stack in containers
-make docker-down      # Stop containers
+make docker-up / make docker-down
 
-# ADK development
-cd backend && adk web ./agent  # Visual agent testing UI
+# Supabase
+supabase db push                  # Apply migrations
+supabase migration list           # Check status
 ```
 
-## Architecture (V4 - Unified GENESIS)
+## Architecture — A2UI 3-Zone Layout
 
 ```
-┌──────────────────────────────────┐ ┌──────────────────────────────────┐
-│       Web Frontend (React)       │ │  Mobile (Expo/React Native)      │
-│  App.tsx → services/api.ts       │ │  5-tab nav + chat modal          │
-│  A2UIMediator → widgets          │ │  A2UIMediator → widgets          │
-└───────────────┬──────────────────┘ └───────────────┬──────────────────┘
-                │ HTTP POST /api/chat                │ HTTP POST /api/chat
-                └───────────────┬────────────────────┘
-┌──────────────────────────────▼──────────────────────────────┐
-│                  Backend (FastAPI + ADK)                     │
-│  main.py → Runner.run_async() → Single GENESIS agent        │
-│  SessionClipboard (Redis + Supabase) for state              │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                    GENESIS (Unified Agent)                   │
-│  Single agent with internal domain specialization           │
-│  All responses come from "GENESIS"                          │
-├─────────────────────────────────────────────────────────────┤
-│  Training    → workout, cardio, HIIT, strength, gym         │
-│  Nutrition   → meals, macros, supplements, hydration        │
-│  Recovery    → HRV, sleep, mobility, pain, cycle            │
-│  Habits      → streaks, check-ins, consistency, motivation  │
-│  Analytics   → progress, insights, trends, metrics          │
-│  Education   → explanations, science, myth-busting (TEXT)   │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│              Zone A: ContextBar              │
+│  Sticky top (~80px). Persistent surfaces.    │
+│  workout-summary, macro-tracker, active-plan │
+├─────────────────────────────────────────────┤
+│              Zone B: ChatStream              │
+│  flex-1 FlatList. Text + inline widgets.     │
+│  Messages + stream-zone surfaces             │
+├─────────────────────────────────────────────┤
+│           Zone C: FloatingWidget             │
+│  Absolute overlay above tab bar.             │
+│  live-session-tracker, timers, quick-actions │
+├─────────────────────────────────────────────┤
+│              CustomTabBar + ChatFAB          │
+│  5 tabs: HOME, TRAIN, FUEL, MIND, TRACK     │
+│  Labels rendered with JetBrains Mono 500     │
+└─────────────────────────────────────────────┘
 ```
+
+**Zone Routing**: Backend sends `zone` field per operation. Frontend SurfaceStore routes to correct zone component.
+
+## Phase 1.5: Zones Architecture (Upcoming Implementation)
+
+### Overview
+
+Phase 1.5 introduces formal **Zone State Management** where each zone is a fully independent render tree with its own lifecycle. This replaces ad-hoc zone rendering with a unified, type-safe architecture.
+
+### Zone Definitions
+
+#### Zone A: ContextBar (Persistent/Top)
+- **Position**: Fixed top, ~80px height
+- **Purpose**: Persistent contextual information always visible
+- **Surface Types**: workout-summary, macro-tracker, active-plan, daily-goal, streak-tracker
+- **Max Surfaces**: 1-2 (stack vertically if multiple)
+- **Lifecycle**: Persists across navigation, survives chat clear
+- **Example Operations**:
+  ```json
+  {
+    "type": "createSurface",
+    "zone": "context",
+    "widgetType": "workout-summary",
+    "dataModel": { "reps": 3, "weight": 185 }
+  }
+  ```
+
+#### Zone B: ChatStream (Main Content)
+- **Position**: Flex-1 between ContextBar and TabBar
+- **Purpose**: Main conversational interface + inline rich widgets
+- **Surface Types**: message cards, checklist, meal-plan, insight-card, quote-card, recipe-card
+- **Lifecycle**: Cleared on "Clear Chat", survives tab navigation (frozen)
+- **Rendering**: Each message in FlatList with optional attached surface
+- **Example Operations**:
+  ```json
+  {
+    "type": "createSurface",
+    "zone": "stream",
+    "widgetType": "checklist",
+    "dataModel": { "items": [...] }
+  }
+  ```
+
+#### Zone C: FloatingWidget (Overlay)
+- **Position**: Absolute overlay, above TabBar, ~120px height
+- **Purpose**: Real-time tracking, timers, quick-action prompts
+- **Surface Types**: live-session-tracker, timer, quick-actions, mini-recap
+- **Lifecycle**: Floating, persistent across tabs, manually dismissible
+- **Z-Index**: Above TabBar, below modals
+- **Example Operations**:
+  ```json
+  {
+    "type": "createSurface",
+    "zone": "overlay",
+    "widgetType": "live-session-tracker",
+    "dataModel": { "duration": 1200, "reps": 5 }
+  }
+  ```
+
+### Phase 1.5 Implementation Phases
+
+1. **Phase 1a** (Foundation): Zone state containers, renderer registration, operation dispatch
+2. **Phase 1b** (Context Bar): Implement ContextBar, test workout-summary + macro-tracker
+3. **Phase 1c** (Chat Stream): Integrate ChatStream zones, test message-surface routing
+4. **Phase 1d** (Overlay): Implement FloatingWidget, test live-session-tracker + timers
+5. **Phase 1e** (Lifecycle): Add freeze/dismiss, chat clear behavior, persistence
+6. **Phase 1f** (Polish): Animation, transitions, edge cases
+7. **Phase 1g** (Testing): Integration tests, edge case coverage
+8. **Phase 1h** (Documentation): Update README, add zone routing guide
+
+### Zone-Specific Rendering Rules
+
+| Zone | FlatList? | Scrollable? | Max Width | Overflow | Clear on Chat |
+|------|-----------|-----------|-----------|----------|---------------|
+| A (ContextBar) | No (Stack) | No | 100% | Stack | No |
+| B (ChatStream) | Yes | Yes | 92% + margin | Scroll | Yes |
+| C (Overlay) | No (Absolute) | No | 90% + center | Dismiss | No |
+
+### Data Flow for Phase 1.5
+
+```
+Backend Response (zone: "context" | "stream" | "overlay")
+       ↓
+A2UI Interpreter (src/lib/a2ui/interpreter.ts)
+       ↓
+SurfaceStore.addSurface(zone, surfaceData)
+       ↓
+Zone Renderer (ContextBar / ChatStream / FloatingWidget)
+       ↓
+SurfaceRenderer → A2UIMediator → Widget Component
+```
+
+### New/Modified Files for Phase 1.5
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/stores/surface-store.ts` | SurfaceStore with zone partitioning | Modify |
+| `src/lib/a2ui/zone-manager.ts` | Zone lifecycle + routing | NEW |
+| `src/components/zones/ContextBar.tsx` | Zone A implementation | Implement |
+| `src/components/zones/ChatStream.tsx` | Zone B with message-surface routing | Enhance |
+| `src/components/zones/FloatingWidget.tsx` | Zone C overlay | Implement |
+| `src/components/zones/ZoneController.tsx` | Master zone orchestrator | NEW |
+| `src/components/widgets/SurfaceRenderer.tsx` | Zone-aware renderer | Enhance |
+| `src/lib/a2ui/interpreter.ts` | Zone dispatch logic | Enhance |
+
+### Backward Compatibility Notes
+
+- Existing widgets continue to work; no breaking changes to widget interface
+- Old surface data without zone field defaults to "stream"
+- All existing surface types supported in all zones (though not all combinations are UI-sensible)
 
 ## Response Format (CRITICAL)
 
-Frontend expects exactly this structure from `/api/chat`:
+Backend `/api/chat` returns:
 
 ```json
 {
-  "text": "Response text (markdown supported)",
+  "text": "Texto de respuesta (markdown)",
   "agent": "GENESIS",
-  "payload": {
-    "type": "workout-card",
-    "props": { ... }
-  }
+  "operations": [
+    {
+      "type": "createSurface",
+      "surfaceId": "surface_uuid",
+      "zone": "context",
+      "widgetType": "workout-summary",
+      "dataModel": { ... }
+    },
+    {
+      "type": "updateDataModel",
+      "surfaceId": "existing_surface_id",
+      "dataModel": { ... }
+    }
+  ]
 }
 ```
 
-- **V4**: `agent` is ALWAYS "GENESIS" - single unified identity
-- `payload` is optional (Education domain typically returns none)
-- `payload.type` determines which React component renders
-- Widget colors are determined by `category` (training, nutrition, recovery, etc.)
+**A2UI Operations**: createSurface, updateComponents, updateDataModel, deleteSurface
+**Zones**: "context" (Zone A), "stream" (Zone B), "overlay" (Zone C)
+
+## State Management
+
+**SurfaceStore** (Zustand + MMKV): Manages all widget surfaces separately from chat messages.
+- `surfaces: Map<string, Surface>` — all active surfaces, partitioned by zone
+- `addSurface()`, `updateSurface()`, `removeSurface()` — CRUD operations
+- `getSurfacesByZone(zone)` — zone selectors for rendering
+- `freezeActiveWidget()`, `dismissSurface()` — lifecycle
+- `clearZone(zone)` — clear all surfaces in a zone (Phase 1.5)
+
+**ChatStore** (Zustand + MMKV): Messages only, no widget embedding.
+- `messages: ChatMessage[]` — text messages with optional `surfaceId` reference
+- `addMessage()`, `setLoading()`
+
+**A2UI Interpreter** (`src/lib/a2ui/interpreter.ts`): Replaces old parser. Processes ALL operations from backend response, routes to correct stores and zones.
 
 ## Key Files
 
+### Mobile App (Primary Client)
+
+**Navigation & Layout**
+| File | Purpose |
+|------|---------|
+| `apps/mobile/app/_layout.tsx` | Root Stack: (tabs) + chat modal + ChatFAB |
+| `apps/mobile/app/(tabs)/_layout.tsx` | 5-tab layout with CustomTabBar |
+| `apps/mobile/app/chat.tsx` | Chat screen with 3-zone layout |
+
+**Stores**
+| File | Purpose |
+|------|---------|
+| `src/stores/surface-store.ts` | SurfaceStore — all widget surfaces by zone |
+| `src/stores/chat-store.ts` | ChatStore — messages only |
+| `src/stores/workout-store.ts` | Workout session state |
+
+**A2UI System**
+| File | Purpose |
+|------|---------|
+| `src/lib/a2ui/interpreter.ts` | interpretResponse() — processes all operations |
+| `src/lib/a2ui/types.ts` | Surface, A2UIOperation, ChatMessage types |
+| `src/lib/a2ui/zone-manager.ts` | Zone lifecycle + routing (Phase 1.5) |
+| `src/components/widgets/A2UIMediator.tsx` | Widget registry + FallbackWidget |
+| `src/components/widgets/SurfaceRenderer.tsx` | Renders surface by widgetType |
+
+**Zone Components**
+| File | Purpose |
+|------|---------|
+| `src/components/zones/ContextBar.tsx` | Zone A — persistent top bar |
+| `src/components/zones/ChatStream.tsx` | Zone B — main chat content |
+| `src/components/zones/FloatingWidget.tsx` | Zone C — overlay above tabs |
+| `src/components/zones/ZoneController.tsx` | Master zone orchestrator (Phase 1.5) |
+
+**Widget Components** (src/components/widgets/)
+WorkoutCard, LiveSessionTracker, MealPlan, MacroTracker, Checklist, DailyCheckin, HabitStreak, QuoteCard, RecipeCard, InsightCard, ProgressDashboard, BodyCompVisualizer, PlateCalculator, QuickActions
+
+**Shared Components** (src/components/)
+GradientCard, StandardCard, ShineEffect, ActionButton, GlassCard, ProgressBar, CollapsibleSection
+
+**Tab Screens** (apps/mobile/app/(tabs)/)
+index.tsx (HOME), train.tsx (TRAIN), fuel.tsx (FUEL), mind.tsx (MIND), track.tsx (TRACK)
+
 ### Backend
+
 | File | Purpose |
 |------|---------|
-| `backend/main.py` | FastAPI server, `/api/chat`, response parsing |
-| `backend/agent/genesis.py` | Unified GENESIS agent (no sub_agents) |
-| `backend/instructions/genesis_unified.txt` | Consolidated instruction file (all 6 domains) |
-| `backend/tools/generate_widget.py` | Widget tool (40+ types) |
-| `backend/schemas/response.py` | `AgentResponse(text, agent="GENESIS", payload)` |
-| `backend/voice/` | Voice engine module (Gemini Live + ElevenLabs) |
-| `backend/services/crypto.py` | Fernet encryption for OAuth tokens |
+| `backend/main.py` | FastAPI server, POST /api/chat, event processing |
+| `backend/agent/genesis.py` | Unified GENESIS agent definition |
+| `backend/instructions/genesis_unified.txt` | Agent instruction file (all 6 domains) |
+| `backend/tools/generate_widget.py` | format_as_a2ui(zone) + generate_widget() |
+| `backend/schemas/response.py` | AgentResponse with operations array |
+| `backend/voice/` | Voice engine (Gemini Live + ElevenLabs) |
 
-### Frontend (Web)
-| File | Purpose |
-|------|---------|
-| `frontend/App.tsx` | Main chat, message state, `handleSend()` |
-| `frontend/services/api.ts` | Backend API client |
-| `frontend/components/Widgets.tsx` | All widgets + `A2UIMediator` switch |
-| `frontend/components/BaseUI.tsx` | `GlassCard`, buttons, inputs |
-| `frontend/constants.ts` | GENESIS brand colors, category colors |
-| `frontend/types/voice.ts` | Voice mode types (WebSocket, states) |
+### Design System — Genesis Fusion
 
-### Mobile App (Expo)
+**Typography**
+- Headers: JetBrains Mono (weight 700)
+- Body: Inter (weight 400/500)
+- Tab labels: JetBrains Mono (weight 500, 10px)
+- Load via `expo-font` in `_layout.tsx`
+- Reference: `src/theme/fonts.ts`
 
-**Stack**: Expo SDK 54, React Native 0.81, Expo Router v6, NativeWind, react-native-reanimated, react-native-svg
+**Colors**
+- Background gradient: #0D0D2B → #1A0A30
+- Primary: #b39aff (light), #6c3bff (saturated)
+- Surface: rgba(255,255,255,0.04) to 0.08
+- Text: #EAEAEA (primary), #A0A0B8 (secondary)
+- Category accents: Training #EF4444, Nutrition #22C55E, Recovery #A855F7, Habits #F59E0B, Analytics #3B82F6
 
-#### Navigation
-| File | Purpose |
-|------|---------|
-| `apps/mobile/app/_layout.tsx` | Root Stack: `(tabs)` group + `chat` fullScreenModal + ChatFAB |
-| `apps/mobile/app/(tabs)/_layout.tsx` | 5-tab Tabs with CustomTabBar, fade transitions |
-| `apps/mobile/app/(tabs)/index.tsx` | HOME — Mission Control (missions, progress, streak) |
-| `apps/mobile/app/(tabs)/train.tsx` | TRAIN — Workout session, weekly calendar, scan |
-| `apps/mobile/app/(tabs)/fuel.tsx` | FUEL — Macro dashboard, meal log, scan |
-| `apps/mobile/app/(tabs)/mind.tsx` | MIND — Check-in, sessions, breath exercise |
-| `apps/mobile/app/(tabs)/track.tsx` | TRACK — Season progress, metrics, trends, achievements |
-| `apps/mobile/app/chat.tsx` | Chat modal (fullscreen, slide from bottom) |
-
-#### Components
-| Directory | Contents |
-|-----------|----------|
-| `src/components/navigation/` | `CustomTabBar` (BlurView + haptics), `ChatFAB` (gradient + animated) |
-| `src/components/shared/` | `ScreenHeader`, `SectionCard`, `MetricCard`, `ProgressRing`, `WeekdayStrip`, `QuickActionBar` |
-| `src/components/ui/` | `GlassCard`, `ActionButton`, `ProgressBar`, `GlassInput` |
-| `src/components/home/` | `MissionCardRow`, `StatPill` |
-| `src/components/train/` | `WorkoutSessionView`, `WeeklyCalendar`, `ScanMachineCard` |
-| `src/components/fuel/` | `MacroDashboard`, `MealLogSection`, `ScanFoodCard` |
-| `src/components/mind/` | `CheckInForm`, `SessionGrid`, `BreathSession` |
-| `src/components/track/` | `SeasonProgress`, `MetricGrid`, `TrendChart`, `AchievementList` |
-| `src/components/widgets/` | A2UI widget system (10+ widget types via `A2UIMediator`) |
-| `src/components/chat/` | `ChatList`, `ChatInput`, `MessageBubble`, `WidgetMessage` |
-
-#### Other
-| File | Purpose |
-|------|---------|
-| `src/data/mockData.ts` | Centralized mock data for all 5 tab screens |
-| `src/hooks/useChat.ts` | Chat state management (messages, loading, actions) |
-| `src/services/config.ts` | API URL initialization (platform-aware) |
-| `src/theme/colors.ts` | Re-exports `COLORS` from `@genesis/shared` + `withOpacity` util |
-| `src/utils/getCategoryColor.ts` | Maps 60+ widget types to category accent colors |
-
-#### Tab Colors
+**Tab Colors**
 | Tab | Color | Icon |
 |-----|-------|------|
-| Home | `#6D00FF` (genesis) | Home |
-| Train | `#EF4444` (red) | Dumbbell |
-| Fuel | `#22C55E` (green) | Apple |
-| Mind | `#A855F7` (purple) | Brain |
-| Track | `#3B82F6` (blue) | BarChart3 |
-
-## ADK Patterns
-
-### Agent Definition (V4 - No sub_agents)
-```python
-from google.adk.agents import Agent
-
-genesis = Agent(
-    name="genesis",
-    model="gemini-2.5-flash",
-    description="GENESIS - Coach unificado de fitness y longevidad...",
-    instruction=GENESIS_INSTRUCTION,  # From genesis_unified.txt
-    tools=[generate_widget, get_user_context, update_user_context],
-    # V4: No sub_agents - all handled internally
-)
-```
-
-### Runner Usage (Async Generator)
-```python
-from google.genai import types
-
-user_content = types.Content(
-    role="user",
-    parts=[types.Part(text=message)]
-)
-
-async for event in runner.run_async(
-    user_id="default",
-    session_id=session_id,
-    new_message=user_content,
-):
-    final_result = event
-```
-
-### Tool Definition
-```python
-# ADK requires simple types - NO Annotated[Literal[...]]
-def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
-    """Docstring is read by LLM - be comprehensive."""
-    return {"type": widget_type, "props": props}
-```
-
-## Domain Routing (V4 - Internal)
-
-GENESIS handles all domains internally based on query keywords:
-
-| Query Keywords (Spanish) | Domain | Primary Widgets |
-|--------------------------|--------|-----------------|
-| entrenamiento, fuerza, rutina, ejercicio, gym, cardio, HIIT | Training | workout-card, live-session-tracker, cardio-session-tracker |
-| nutricion, comida, dieta, macros, calorias, receta, suplementos | Nutrition | meal-plan, recipe-card, macro-tracker, supplement-stack |
-| recuperacion, HRV, sueno, dolor, movilidad, ciclo | Recovery | recovery-dashboard, hrv-insight, sleep-analysis, cycle-tracker |
-| habitos, consistencia, motivacion, check-in, racha | Habits | checklist, daily-checkin, habit-streak, quote-card |
-| progreso, analisis, datos, metricas, tendencias | Analytics | progress-dashboard, insight-card, body-comp-visualizer |
-| por que, explicame, concepto, ciencia, mito | Education | None (TEXT_ONLY) |
-| hola, inicio | Greeting | quick-actions |
-
-## Adding New Domains/Widgets (V4)
-
-### Adding Widget to Existing Domain
-1. Document widget schema in `backend/instructions/genesis_unified.txt`
-2. **Web**: Add props interface in `frontend/components/Widgets.tsx`, create component, add to `A2UIMediator`
-3. **Mobile**: Create component in `apps/mobile/src/components/widgets/`, register via `registerWidget()` in `index.ts`
-4. Document in backend tool docstring
-
-### Modifying Domain Behavior
-1. Edit relevant section in `backend/instructions/genesis_unified.txt`
-2. Follow the existing pattern (Keywords, Widgets, Guidelines)
-3. Test with domain-specific queries
-
-## Gotchas
-
-- **V4 uses single instruction file**: All domain knowledge is in `genesis_unified.txt`
-- **No sub_agents in V4**: GENESIS handles everything directly
-- **Tool parameters must be simple types**: ADK can't parse `Annotated[Literal[...]]`
-- **`runner.run_async()` returns async generator**: Use `async for`, not `await`
-- **Message must be `types.Content`**: Not raw string
-- **Response may have markdown wrapper**: Parse ` ```json ``` ` blocks
-- **google-adk >= 1.1.0 required**: Not 1.21.0 (conflicts with FastAPI/starlette)
-- **CRITICAL - ADK Template Variables**: In instruction `.txt` files, avoid `{ variable }` syntax as ADK interprets curly braces. Use `(variable)` instead.
-- **Mobile uses mock data**: Tab screens currently render `src/data/mockData.ts`. Backend integration pending.
-- **Mobile tab screens use `TAB_BAR_HEIGHT + 80` bottom padding**: Required so ScrollView content isn't hidden behind the absolute-positioned tab bar + FAB.
-- **Mobile widget registration in `_layout.tsx`**: Widget imports are in root layout, not per-screen. Moving them breaks A2UIMediator resolution.
-
-## Voice Engine
-
-Real-time voice interaction using **Gemini Live API (STT + LLM)** and **ElevenLabs (TTS)**.
-
-### Architecture
-```
-┌─────────────────┐     WebSocket      ┌─────────────────┐
-│  Frontend       │◄──────────────────►│  Backend        │
-│  VoiceMode.tsx  │   /ws/voice        │  voice/router   │
-│  ParticleOrb    │                    │  voice/session  │
-│  useVoiceSession│                    │                 │
-└─────────────────┘                    └────────┬────────┘
-                                                │
-                    ┌───────────────────────────┼───────────────────────────┐
-                    │                           │                           │
-           ┌────────▼────────┐         ┌────────▼────────┐         ┌────────▼────────┐
-           │  Gemini Live    │         │  tts_text_queue │         │  ElevenLabs     │
-           │  STT + LLM      │────────►│  (async queue)  │────────►│  TTS Streaming  │
-           │  TEXT mode      │         │                 │         │  WebSocket      │
-           └─────────────────┘         └─────────────────┘         └─────────────────┘
-```
-
-**Pipeline**: Audio → Gemini (STT+LLM, TEXT only) → Queue → ElevenLabs (TTS) → Audio
-
-### Key Files
-| File | Purpose |
-|------|---------|
-| `backend/voice/router.py` | WebSocket `/ws/voice` endpoint |
-| `backend/voice/session.py` | Voice session manager + TTS pipeline |
-| `backend/voice/gemini_live.py` | Gemini Live API client (TEXT mode) |
-| `backend/voice/elevenlabs_client.py` | ElevenLabs WebSocket TTS |
-| `backend/voice/audio_utils.py` | PCM encoding/decoding |
-| `frontend/components/voice/VoiceMode.tsx` | Full-screen voice UI |
-| `frontend/components/voice/ParticleOrb.tsx` | Animated orb visualization |
-| `frontend/hooks/useVoiceSession.ts` | Voice state management |
-| `frontend/services/voiceApi.ts` | WebSocket client |
-
-### Audio Format
-- **Input**: PCM 16-bit signed, little-endian, 16kHz mono
-- **Output**: PCM 16-bit signed, little-endian, 16kHz mono (ElevenLabs pcm_16000)
-- **Transport**: Base64 encoded over JSON WebSocket
-
-### Models
-- **Gemini (STT+LLM)**: `gemini-2.0-flash-exp` (TEXT mode for ElevenLabs handoff)
-- **ElevenLabs (TTS)**: `eleven_turbo_v2_5` (low latency, multilingual)
-
-### Voice States
-- `idle`: Ready, particles floating gently
-- `listening`: User speaking, particles expanding
-- `processing`: Gemini processing, particles spinning
-- `speaking`: GENESIS responding, particles pulsing
-
-### WebSocket Protocol
-```typescript
-// Client → Server
-{ type: 'audio_chunk', data: '<base64 PCM>' }
-{ type: 'end_turn' }
-{ type: 'cancel' }
-
-// Server → Client
-{ type: 'transcript', text: '...', final: boolean }
-{ type: 'audio_chunk', data: '<base64 PCM>' }
-{ type: 'state', value: 'listening' | 'processing' | 'speaking' }
-{ type: 'widget', payload: WidgetPayload }
-{ type: 'end_response' }
-{ type: 'error', message: '...' }
-```
+| Home | #6D00FF | Home |
+| Train | #EF4444 | Dumbbell |
+| Fuel | #22C55E | Apple |
+| Mind | #A855F7 | Brain |
+| Track | #3B82F6 | BarChart3 |
 
 ## Supabase Database
 
-Project: `genesis_A2UI` (xaxygzwoouaiguyuwpvf)
+Project ID: xaxygzwoouaiguyuwpvf
 
-### Tables
+**Core Tables**: sessions, user_profiles, conversation_messages, wearable_connections, wearable_data, daily_checkins, workout_sessions, set_logs, widget_events
 
-| Table | Purpose | Key Columns |
-|-------|---------|-------------|
-| `sessions` | Clipboard persistence | session_id, user_id, clipboard_data (JSONB), status |
-| `user_profiles` | Extended user profiles | fitness_level, goals, wearables, preferences |
-| `conversation_messages` | Chat history | session_id, role, content, agent, widget_type |
-| `wearable_connections` | OAuth tokens | provider (garmin/oura/whoop/apple), tokens, scopes |
-| `wearable_data` | Normalized metrics | HRV, sleep, recovery, steps (24 columns) |
-| `wearable_raw` | Raw API payloads | endpoint, payload (JSONB) |
+**RLS**: All user tables enforce `auth.uid()::text = user_id`
 
-### Operational Tables
+**Migrations**: `supabase/migrations/` (4+ files, timestamp format)
 
-| Table | Purpose |
-|-------|---------|
-| `daily_checkins` | Daily check-ins |
-| `workout_sessions` | Training sessions |
-| `set_logs` | Exercise set details |
-| `widget_events` | Widget analytics |
+## ADK Patterns
 
-### Views
-
-| View | Definition |
-|------|------------|
-| `active_sessions` | workout_sessions WHERE status='active' |
-| `todays_checkin` | daily_checkins WHERE date=today |
-
-### Migrations
-
-```bash
-# Migration files (timestamp format required by Supabase CLI)
-supabase/migrations/
-├── 20260107000001_clipboard_schema.sql    # Initial clipboard + sessions
-├── 20260107000002_v3_schema_upgrade.sql   # Full schema
-└── 20260117000003_security_hardening.sql  # RLS policies (auth.uid())
+```python
+# Agent definition — V4 unified, no sub_agents
+genesis = Agent(
+    name="genesis",
+    model="gemini-2.5-flash",
+    instruction=GENESIS_INSTRUCTION,
+    tools=[generate_widget, get_user_context, update_user_context],
+)
 ```
 
-### Security
-- **OAuth Token Encryption**: `backend/services/crypto.py` encrypts wearable tokens at rest using Fernet
-- **RLS Policies**: All user tables enforce `auth.uid()::text = user_id`
-- **Graceful Degradation**: If `ENCRYPTION_KEY` not set, tokens stored unencrypted (dev mode)
+**CRITICAL — Template variables in .txt files**: Use `(variable)` not `{ variable }`. ADK interprets curly braces as context variables.
+
+**Runner**: `async for event in runner.run_async(user_id, session_id, new_message):`
+
+## Gotchas
+
+- **Spanish UI**: All user-facing text in Spanish. Backend agent responds in Spanish.
+- **fontFamily required**: Every Text component with headers uses JetBrains Mono. Tab labels use JetBrains Mono. Body text uses Inter.
+- **No widget embedding in messages**: ChatMessage stores only text + surfaceId reference. Widgets live in SurfaceStore.
+- **Zone from backend**: Never hardcode zones in frontend. Backend operations include zone field.
+- **ADK template syntax**: Use parentheses `(variable)` not braces `{variable}` in instruction files.
+- **Operations array**: Backend returns operations[] not payload. Interpreter processes ALL operations, not just the first.
+- **google-adk >= 1.1.0**: Not 1.21.0 (conflicts with FastAPI/starlette).
+- **Tab bar bottom padding**: Tab screens use `TAB_BAR_HEIGHT + 80` bottom padding for absolute-positioned tab bar + FAB.
+- **Widget registration in _layout.tsx**: Widget imports are in root layout. Moving them breaks A2UIMediator resolution.
+- **MMKV persistence**: Both SurfaceStore and ChatStore persist via MMKV adapter.
+- **Zone lifecycle (Phase 1.5)**: Zone A persists on chat clear, Zone B cleared, Zone C dismissed. Don't hardcode zone clearing logic in widgets.
+- **Surface IDs**: Always UUID v4, never auto-increment or sequential IDs.
 
 ## Environment Variables
 
 ```bash
 # backend/.env
-GOOGLE_API_KEY=...        # Required for chat and voice (Gemini)
-ELEVENLABS_API_KEY=...    # Required for TTS streaming
-ENCRYPTION_KEY=...        # Optional: Fernet key for OAuth token encryption
-PORT=8000                 # Default
-CORS_ORIGINS=["*"]        # JSON array
-
-# Supabase (optional - falls back to mock)
+GOOGLE_API_KEY=...           # Required (Gemini)
+ELEVENLABS_API_KEY=...       # Required for TTS
+ENCRYPTION_KEY=...           # Optional: Fernet for OAuth tokens
+PORT=8000
+CORS_ORIGINS=["*"]
 SUPABASE_URL=https://xaxygzwoouaiguyuwpvf.supabase.co
 SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_KEY=...
 
-# frontend (via Vite)
-VITE_API_URL=http://localhost:8000  # Backend URL
-
-# mobile (via Expo)
-EXPO_PUBLIC_API_URL=http://localhost:8000  # Backend URL (auto-detects platform)
+# mobile (Expo)
+EXPO_PUBLIC_API_URL=http://localhost:8000
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-## CLI Commands
+## Active Planning Documents
 
-```bash
-# Supabase (use CLI, not MCP plugin)
-supabase login                    # Authenticate
-supabase link --project-ref ...   # Link project
-supabase db push                  # Apply migrations
-supabase migration list           # Check status
-```
+| Document | Purpose |
+|----------|---------|
+| `docs/plans/2026-02-06-a2ui-zones-design.md` | Architecture design (validated) |
+| `docs/plans/2026-02-06-a2ui-zones-implementation-plan.md` | 8-phase implementation plan (Phase 1.5) |
+| `docs/plans/2026-02-06-a2ui-zones-master-prompt.md` | Self-contained master prompt |
+| `docs/plans/2026-02-06-claude-code-audit-report.md` | Phase 1 audit results |
+| `docs/plans/2026-01-16-voice-engine-design.md` | Voice Engine (Sprint 2) |
+| `docs/wearables/GARMIN_INTEGRATION.md` | Garmin API guide (future) |
+
+## Quick Reference: When to Create/Update Surfaces
+
+- **Zone A (ContextBar)**: User starts workout, macro tracker active, daily goal updated
+- **Zone B (ChatStream)**: User asks question → GENESIS responds with widget, request checklist item
+- **Zone C (FloatingWidget)**: Workout in progress (live-session-tracker), timer started (timer widget)
+
+## When to Clear/Dismiss
+
+- **Zone A**: Never cleared (persists across session)
+- **Zone B**: Cleared when user taps "Clear Chat" in ChatStore
+- **Zone C**: Manually dismissed by user, or automatically after timer/session ends
+
+---
+
+**Last Updated**: 2026-02-06
+**Applicable Versions**: V4 Architecture + Phase 1.5 Zones (pre-implementation)
+**Maintained by**: GENESIS Platform Team

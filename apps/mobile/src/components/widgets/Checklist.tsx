@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { Check } from 'lucide-react-native';
 import { GlassCard, ProgressBar } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 interface ChecklistItem {
   id: string;
@@ -60,8 +61,8 @@ export const Checklist: React.FC<{
 
   return (
     <GlassCard accentColor={COLORS.habits}>
-      <Text className="font-bold text-white text-sm mb-1">{data.title}</Text>
-      <Text className="text-[10px] text-white/40 mb-3">
+      <Text className="font-bold text-white text-sm mb-1" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
+      <Text className="text-[10px] text-white/40 mb-3" style={{ fontFamily: FONTS.mono }}>
         {completedCount}/{items.length} completado
       </Text>
 

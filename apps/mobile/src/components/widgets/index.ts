@@ -11,6 +11,7 @@ import { DailyCheckin } from './DailyCheckin';
 import { Checklist } from './Checklist';
 import { ProgressDashboard } from './ProgressDashboard';
 import { InsightCard } from './InsightCard';
+import { ContextBarWidget } from './ContextBarWidget';
 
 registerWidget('quick-actions', QuickActions);
 registerWidget('genesis-quick-actions', QuickActions);
@@ -25,6 +26,7 @@ registerWidget('daily-checkin', DailyCheckin);
 registerWidget('checklist', Checklist);
 registerWidget('progress-dashboard', ProgressDashboard);
 registerWidget('insight-card', InsightCard);
+registerWidget('training-mode-bar', ContextBarWidget);
 
 export { A2UIMediator, registerWidget } from './A2UIMediator';
 export { FallbackWidget } from './FallbackWidget';

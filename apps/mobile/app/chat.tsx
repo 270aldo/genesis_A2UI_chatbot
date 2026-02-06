@@ -5,9 +5,9 @@ import { useRouter } from 'expo-router';
 import { COLORS } from '@genesis/shared';
 import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useChatStore, useWorkoutStore } from '../src/stores';
+import { useChatStore, useWorkoutStore, useSurfaceStore } from '../src/stores';
 import { createWidgetEvent } from '../src/lib/a2ui';
-import { ChatList, ChatInput } from '../src/components/chat';
+import { ChatList, ChatInput, ContextBar, FloatingWidget } from '../src/components/chat';
 
 export default function ChatModal() {
   const router = useRouter();
@@ -34,8 +34,13 @@ export default function ChatModal() {
     async (action: string, data?: Record<string, unknown>) => {
       switch (action) {
         case 'start-workout': {
-          // Freeze the WorkoutCard, start workout, send event for LiveSessionTracker
+          // Freeze the originating stream surface + legacy widget
           freezeActiveWidget();
+          const lastMsg = messages[messages.length - 1];
+          if (lastMsg?.surfaceId) {
+            useSurfaceStore.getState().freezeSurface(lastMsg.surfaceId);
+          }
+
           const session = await startWorkout({
             title: (data?.title as string) ?? 'Workout',
             exercises: (data?.exercises as Record<string, unknown>[]) ?? [],
@@ -62,33 +67,41 @@ export default function ChatModal() {
             rpe: data?.rpe as number | undefined,
           });
 
-          // Update the LiveSessionTracker widget in-place with new set data
           if (result) {
+            // Update overlay surface (new path)
+            const overlaySurfaces = useSurfaceStore.getState().getOverlaySurfaces();
+            const trackerSurface = overlaySurfaces.find(
+              (s) => s.widgetType === 'live-session-tracker' && s.state === 'active',
+            );
+            if (trackerSurface) {
+              const exercises = [...((trackerSurface.dataModel.exercises as any[]) ?? [])];
+              const exIdx = (data?.exerciseOrder as number) ?? 0;
+              if (exercises[exIdx]) {
+                const completedSets = [
+                  ...((exercises[exIdx].setsCompleted as any[]) ?? []),
+                  { weight: data?.weightKg, reps: data?.reps, isPr: result.isPr },
+                ];
+                exercises[exIdx] = { ...exercises[exIdx], setsCompleted: completedSets };
+              }
+              useSurfaceStore.getState().updateDataModel(trackerSurface.id, { exercises });
+            }
+
+            // Backward compat: update legacy widget in message
             const lastMsg = messages[messages.length - 1];
             if (lastMsg?.widget?.type === 'live-session-tracker') {
               const updatedExercises = [
                 ...((lastMsg.widget.props.exercises as any[]) ?? []),
               ];
-              const exIdx = data?.exerciseOrder as number ?? 0;
+              const exIdx = (data?.exerciseOrder as number) ?? 0;
               if (updatedExercises[exIdx]) {
                 const completedSets = [
                   ...((updatedExercises[exIdx].setsCompleted as any[]) ?? []),
-                  {
-                    weight: data?.weightKg,
-                    reps: data?.reps,
-                    isPr: result.isPr,
-                  },
+                  { weight: data?.weightKg, reps: data?.reps, isPr: result.isPr },
                 ];
-                updatedExercises[exIdx] = {
-                  ...updatedExercises[exIdx],
-                  setsCompleted: completedSets,
-                };
+                updatedExercises[exIdx] = { ...updatedExercises[exIdx], setsCompleted: completedSets };
               }
               useChatStore.getState().updateWidget(lastMsg.id, {
-                props: {
-                  ...lastMsg.widget.props,
-                  exercises: updatedExercises,
-                },
+                props: { ...lastMsg.widget.props, exercises: updatedExercises },
               });
             }
           }
@@ -102,7 +115,14 @@ export default function ChatModal() {
               (Date.now() - new Date(activeSession.startedAt).getTime()) / 60000
             );
 
+          // Freeze overlay surface + legacy widget
           freezeActiveWidget();
+          const overlaySurfaces = useSurfaceStore.getState().getOverlaySurfaces();
+          const activeSurface = overlaySurfaces.find((s) => s.state === 'active');
+          if (activeSurface) {
+            useSurfaceStore.getState().freezeSurface(activeSurface.id);
+          }
+
           await completeWorkout({ durationMins });
 
           const prs = sets
@@ -175,7 +195,10 @@ export default function ChatModal() {
         </View>
       </View>
 
-      {/* Chat */}
+      {/* Zone A: ContextBar */}
+      <ContextBar onAction={handleAction} />
+
+      {/* Zone B: Chat + Input */}
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -184,6 +207,9 @@ export default function ChatModal() {
         <ChatList messages={messages} onAction={handleAction} />
         <ChatInput onSend={sendMessage} isLoading={isLoading} />
       </KeyboardAvoidingView>
+
+      {/* Zone C: FloatingWidget (absolute overlay) */}
+      <FloatingWidget onAction={handleAction} />
     </SafeAreaView>
   );
 }

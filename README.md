@@ -1,108 +1,111 @@
-# NGX GENESIS A2UI
+# NGX GENESIS
 
-Multiagent AI fitness chatbot with React frontend and FastAPI + Google ADK backend.
+Performance & Longevity platform powered by AI. GENESIS is an intelligent coach that generates interactive UI surfaces through natural conversation, covering training, nutrition, recovery, habits, analytics, and education.
 
 ## Architecture
 
 ```
-GENESIS (Orchestrator)
-    ├── BLAZE (Strength/Workouts) → workout-card
-    ├── SAGE (Nutrition/Meals) → meal-plan
-    ├── SPARK (Habits/Consistency) → checklist
-    ├── STELLA (Mindset/Analytics) → progress-dashboard
-    └── LOGOS (Education) → TEXT_ONLY
+Mobile App (Expo SDK 54)              Backend (FastAPI + Google ADK)
+┌─────────────────────────┐           ┌──────────────────────────┐
+│  3-Zone Layout          │           │  GENESIS Agent           │
+│  ├─ ContextBar (top)    │  HTTP     │  (gemini-2.5-flash)      │
+│  ├─ ChatStream (center) │◄────────►│  6 internal domains      │
+│  └─ FloatingWidget      │  /api/   │  A2UI operations[]       │
+│                         │  chat    │                          │
+│  5 Tab Navigation       │           │  Supabase (persistence)  │
+│  HOME TRAIN FUEL MIND   │           │  Voice Engine            │
+│  TRACK                  │           │                          │
+└─────────────────────────┘           └──────────────────────────┘
 ```
+
+**A2UI Protocol**: The agent doesn't just reply with text — it generates structured operations that create, update, and delete interactive widget surfaces across 3 UI zones.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Mobile | Expo SDK 54, React Native 0.81, Expo Router v6, NativeWind v4 |
+| Backend | Python 3.12+, FastAPI, Google ADK (Agent Developer Kit) |
+| AI Model | Gemini 2.5 Flash |
+| Database | Supabase (PostgreSQL + Auth + Realtime + Storage) |
+| State | Zustand v5 + MMKV persistence |
+| Voice | Gemini Live API (STT+LLM) + ElevenLabs (TTS) |
 
 ## Quick Start
 
-### Option 1: Make Commands (Recommended)
+### Prerequisites
+- Python 3.12+
+- Node.js 20+
+- Expo CLI (`npm install -g expo-cli`)
+- Google API Key (Gemini)
+
+### Setup
 
 ```bash
-# Install dependencies
+# Clone and install
+git clone <repo-url>
 make install
 
-# Configure environment
-cp backend/.env.example backend/.env  # Add GOOGLE_API_KEY
+# Configure backend
+cp backend/.env.example backend/.env
+# Add GOOGLE_API_KEY to backend/.env
 
-# Run both services
-make dev
+# Run backend
+cd backend && python main.py
+
+# Run mobile (new terminal)
+cd apps/mobile && npx expo start
 ```
 
-### Option 2: Manual Setup
+### Docker
 
 ```bash
-# Backend
-cd backend
-pip install -r requirements.txt
-cp .env.example .env  # Add GOOGLE_API_KEY
-python main.py        # Runs on port 8000
-
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev           # Runs on port 3000
-```
-
-### Option 3: Docker
-
-```bash
-# Set API key
-export GOOGLE_API_KEY=your_key_here
-
-# Run with Docker Compose
+export GOOGLE_API_KEY=your_key
 make docker-up
 ```
-
-## Development Commands
-
-| Command | Description |
-|---------|-------------|
-| `make dev` | Run backend + frontend |
-| `make backend` | Run backend only |
-| `make frontend` | Run frontend only |
-| `make test` | Run backend tests |
-| `make docker-up` | Start with Docker |
-| `make clean` | Remove build artifacts |
 
 ## Project Structure
 
 ```
-/
-├── frontend/         # React + Vite + TypeScript
-│   ├── App.tsx       # Main chat component
-│   ├── components/   # UI components
-│   ├── services/     # API client
-│   └── types.ts      # TypeScript types
+├── apps/mobile/           # Expo React Native (primary client)
+│   ├── app/               # Expo Router screens
+│   │   ├── (tabs)/        # 5-tab navigation
+│   │   └── chat.tsx       # Chat with 3-zone layout
+│   └── src/
+│       ├── components/    # UI components + widgets
+│       ├── stores/        # Zustand stores (surface, chat, workout)
+│       ├── lib/a2ui/      # A2UI interpreter + types
+│       └── theme/         # Design tokens (colors, fonts)
 │
-├── backend/          # FastAPI + Google ADK
-│   ├── main.py       # API server
-│   ├── agent/        # ADK agents (genesis + 5 specialists)
-│   ├── tools/        # Widget generation tools
-│   ├── instructions/ # Agent system prompts
-│   └── schemas/      # Pydantic models
+├── backend/               # FastAPI + Google ADK
+│   ├── main.py            # API server
+│   ├── agent/             # GENESIS agent definition
+│   ├── instructions/      # Agent system prompt
+│   ├── tools/             # Widget generation tools
+│   └── voice/             # Voice engine module
 │
-└── README.md         # This file
+├── frontend/              # React web client (legacy)
+├── supabase/              # Migrations + config
+├── infrastructure/        # Terraform (GCP)
+└── docs/                  # Planning documents
 ```
 
-## API Response Format
+## Development
 
-```json
-{
-  "text": "Agent response text",
-  "agent": "BLAZE",
-  "payload": {
-    "type": "workout-card",
-    "props": { ... }
-  }
-}
-```
+| Command | Description |
+|---------|-------------|
+| `cd apps/mobile && npx expo start` | Mobile dev server |
+| `cd backend && python main.py` | Backend on port 8000 |
+| `make dev` | Backend + web frontend |
+| `make test` | Run backend tests |
+| `cd apps/mobile && npx tsc --noEmit` | TypeScript check |
 
-## Environment Variables
+## Documentation
 
-### Backend (.env)
-- `GOOGLE_API_KEY` - Gemini API key (required)
-- `PORT` - Server port (default: 8000)
-- `CORS_ORIGINS` - Allowed origins (default: ["*"])
+- `CLAUDE.md` — Complete project context for AI agents
+- `docs/plans/` — Active design and implementation documents
+- `docs/wearables/` — Wearable integration guides
+- `docs/archive/` — Historical documentation
 
 ## License
 

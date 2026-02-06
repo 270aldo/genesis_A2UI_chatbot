@@ -2,7 +2,7 @@ import React from 'react';
 import { WidgetPayload } from '@genesis/shared';
 import { FallbackWidget } from './FallbackWidget';
 
-type WidgetComponent = React.FC<{
+export type WidgetComponent = React.FC<{
   data: Record<string, any>;
   onAction?: (action: string, data?: any) => void;
 }>;
@@ -11,6 +11,10 @@ const WIDGET_MAP = new Map<string, WidgetComponent>();
 
 export const registerWidget = (type: string, component: WidgetComponent) => {
   WIDGET_MAP.set(type, component);
+};
+
+export const getWidgetComponent = (type: string): WidgetComponent | undefined => {
+  return WIDGET_MAP.get(type);
 };
 
 interface A2UIMediatorProps {

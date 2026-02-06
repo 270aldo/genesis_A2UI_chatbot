@@ -9,6 +9,7 @@ import Animated, {
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
 import { GlassCard } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 interface Metric {
   label: string;
@@ -41,7 +42,7 @@ export const ProgressDashboard: React.FC<{
     <GlassCard accentColor={COLORS.analytics}>
       {/* Header */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="font-bold text-white text-base">{data.title}</Text>
+        <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
         {data.period && (
           <View
             className="px-2 py-1 rounded"
@@ -112,7 +113,7 @@ const AnimatedValue: React.FC<{ value: number | string; unit?: string }> = ({
   }
 
   return (
-    <Text className="text-lg font-bold text-white">
+    <Text className="text-lg font-bold text-white" style={{ fontFamily: FONTS.monoBold }}>
       {value}
       {unit && <Text className="text-xs text-white/40"> {unit}</Text>}
     </Text>

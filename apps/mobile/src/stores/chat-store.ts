@@ -3,7 +3,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { mmkvStorage } from '../lib/mmkv';
 import { API_BASE } from '../services/config';
 import type { ChatEvent, ChatMessage } from '../lib/a2ui/types';
-import { parseResponse, createUserMessage } from '../lib/a2ui/parser';
+import { createUserMessage } from '../lib/a2ui/parser';
+import { interpretResponse } from '../lib/a2ui/interpreter';
+import { useSurfaceStore } from './surface-store';
 
 const MAX_PERSISTED_MESSAGES = 50;
 
@@ -14,6 +16,7 @@ interface ChatState {
 
   sendMessage: (text: string) => Promise<void>;
   sendEvent: (event: ChatEvent, messageText?: string) => Promise<void>;
+  addMessage: (msg: ChatMessage) => void;
   freezeActiveWidget: () => void;
   updateWidget: (messageId: string, updates: Partial<ChatMessage['widget']>) => void;
   clearMessages: () => void;
@@ -43,9 +46,13 @@ export const useChatStore = create<ChatState>()(
 
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const data = await res.json();
-          const assistantMsg = parseResponse(data);
+          const result = interpretResponse(data);
 
-          set((s) => ({ messages: [...s.messages, assistantMsg] }));
+          set((s) => ({ messages: [...s.messages, result.message] }));
+
+          if (result.errors.length > 0) {
+            console.warn('[chat-store] interpreter errors:', result.errors);
+          }
         } catch (e) {
           console.error('[chat-store] sendMessage failed:', e);
           const errMsg: ChatMessage = {
@@ -84,9 +91,13 @@ export const useChatStore = create<ChatState>()(
 
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const data = await res.json();
-          const assistantMsg = parseResponse(data);
+          const result = interpretResponse(data);
 
-          set((s) => ({ messages: [...s.messages, assistantMsg] }));
+          set((s) => ({ messages: [...s.messages, result.message] }));
+
+          if (result.errors.length > 0) {
+            console.warn('[chat-store] interpreter errors:', result.errors);
+          }
         } catch (e) {
           console.error('[chat-store] sendEvent failed:', e);
         } finally {
@@ -94,6 +105,11 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
+      addMessage: (msg) => {
+        set((s) => ({ messages: [...s.messages, msg] }));
+      },
+
+      // Backward compat: freeze widgets embedded in old persisted messages
       freezeActiveWidget: () => {
         set((s) => ({
           messages: s.messages.map((msg) => {
@@ -108,6 +124,7 @@ export const useChatStore = create<ChatState>()(
         }));
       },
 
+      // Backward compat: update widgets embedded in old persisted messages
       updateWidget: (messageId, updates) => {
         set((s) => ({
           messages: s.messages.map((msg) => {
@@ -123,6 +140,7 @@ export const useChatStore = create<ChatState>()(
       },
 
       clearMessages: () => {
+        useSurfaceStore.getState().clearZone('stream');
         set({ messages: [], sessionId: `mobile-${Date.now()}` });
       },
     }),

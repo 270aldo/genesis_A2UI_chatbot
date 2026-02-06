@@ -1,108 +1,63 @@
-# NGX GENESIS A2UI - Gemini Context
+# NGX GENESIS — Gemini Context
 
-This document provides context and instructions for working on the NGX GENESIS A2UI project, a multi-agent AI fitness chatbot.
+## Overview
+NGX GENESIS is a Performance & Longevity mobile platform implementing A2UI (AI-to-UI) protocol. Single unified GENESIS agent with 6 internal domains, Expo SDK 54 mobile client, FastAPI + Google ADK backend, Supabase database.
 
-## 1. Project Overview
+## Architecture
+- **Agent**: Single `genesis` agent (gemini-2.5-flash), no sub_agents
+- **Instruction file**: `backend/instructions/genesis_unified.txt` (all 6 domains consolidated)
+- **Tools**: generate_widget, get_user_context, update_user_context
+- **Response**: `{ text, agent: "GENESIS", operations[] }`
 
-**NGX GENESIS A2UI** implements the **A2UI (AI-to-UI)** paradigm. The backend uses Google's Agent Developer Kit (ADK) to orchestrate a team of AI agents. These agents don't just reply with text; they generate structured payloads that the React frontend renders as interactive UI widgets (e.g., workout cards, meal plans).
+## A2UI Protocol
+The agent generates operations that create/update/delete widget surfaces in 3 UI zones:
+- **context** — persistent top bar (workout summaries, macro trackers)
+- **stream** — inline with chat messages (cards, plans, checklists)
+- **overlay** — floating above tab bar (live session tracker, timers)
 
-### Key Technologies
-*   **Backend:** Python 3.12+, FastAPI, Google ADK (`google-adk`), Pydantic.
-*   **Frontend:** React 19, TypeScript, Vite, Tailwind CSS (implied by class names in typical React setups, verify if needed), Lucide React icons.
-*   **Orchestration:** Local multi-agent routing using ADK's `root_agent` and `sub_agents`.
+Operations: createSurface, updateComponents, updateDataModel, deleteSurface
 
-## 2. Architecture & Agents
+## ADK Patterns
 
-### Agent Hierarchy
-The system uses a hub-and-spoke model where **GENESIS** delegates to specialists.
-
-*   **GENESIS (Orchestrator):** Root agent. Receives all messages, detects intent, and routes to a specialist.
-    *   **BLAZE (Strength):** Generates workout routines (`workout-card`), timers.
-    *   **SAGE (Nutrition):** Creates meal plans (`meal-plan`), recipes.
-    *   **SPARK (Habits):** Manages habits (`checklist`), daily check-ins.
-    *   **STELLA (Analytics):** Visualizes progress (`progress-dashboard`).
-    *   **LOGOS (Education):** Pure text explanations (no widgets).
-
-### Data Flow
-1.  **User** sends message via Frontend.
-2.  **Frontend** POSTs to `http://localhost:8000/api/chat`.
-3.  **FastAPI** receives request, passes text to ADK `Runner`.
-4.  **GENESIS** analyzes text and routes to a sub-agent (e.g., BLAZE) based on the agent's `description`.
-5.  **Sub-agent** may call the `generate_widget` tool.
-6.  **Backend** returns a JSON response (parsed from agent output).
-7.  **Frontend** `A2UIMediator` component renders the appropriate widget based on `payload.type`.
-
-## 3. Building and Running
-
-### Prerequisites
-*   Python 3.12+
-*   Node.js & npm
-*   `GOOGLE_API_KEY` set in `backend/.env` (copy from `backend/.env.example`)
-
-### Commands (Makefile)
-
-| Command | Description |
-| :--- | :--- |
-| `make dev` | **Recommended.** Runs Backend (port 8000) and Frontend (port 3000) concurrently. |
-| `make install` | Installs Python dependencies (`requirements.txt`) and Node modules (`package.json`). |
-| `make backend` | Runs only the FastAPI backend (`python main.py`). |
-| `make frontend` | Runs only the Vite frontend (`npm run dev`). |
-| `make test` | Runs backend tests (`pytest`). |
-| `make docker-up` | Builds and starts the full stack using Docker Compose. |
-| `make clean` | Removes build artifacts (`__pycache__`, `node_modules`, `dist`). |
-
-## 4. Development Conventions
-
-### Backend (Python/ADK)
-*   **Agent Definition:** Agents are defined in `backend/agent/`.
-    *   `genesis.py`: Root agent.
-    *   `specialists/`: Sub-agents.
-*   **Routing Logic:** The `description` parameter in the `Agent()` constructor is **critical**. The ADK uses semantic matching against this description to route user queries. **Include keywords** in the description (e.g., "entrenamiento", "dieta").
-*   **Tools:** defined in `backend/tools/`.
-    *   **Type Safety:** ADK requires simple types in tool signatures (e.g., `str`, `int`, `dict`). Avoid complex `Annotated` or `Literal` types in tool function arguments as they may cause parsing issues.
-*   **Instructions:** System prompts are stored as `.txt` files in `backend/instructions/`.
-
-### Frontend (React/TypeScript)
-*   **Widget Rendering:** `frontend/components/Widgets.tsx` contains the `A2UIMediator` which switches on `payload.type`.
-    *   To add a widget: Create component -> Add interface -> Add to Mediator switch case.
-*   **API Client:** Use `frontend/services/api.ts` for backend communication.
-
-### Response Format Contract
-The frontend strictly expects this JSON structure from the API:
-
-```json
-{
-  "text": "Markdown supported response text",
-  "agent": "AGENT_NAME",
-  "payload": {
-    "type": "widget-type-identifier",
-    "props": {
-      "key": "value"
-    }
-  }
-}
+### Agent Definition
+```python
+from google.adk.agents import Agent
+genesis = Agent(
+    name="genesis",
+    model="gemini-2.5-flash",
+    instruction=GENESIS_INSTRUCTION,
+    tools=[generate_widget, get_user_context, update_user_context],
+)
 ```
-*   `agent`: Must be UPPERCASE (e.g., "BLAZE").
-*   `payload`: Optional (null for text-only).
 
-## 5. Directory Structure Key
+### CRITICAL: Template Variables
+In `.txt` instruction files, NEVER use `{ variable }` — ADK interprets curly braces as context variables. Use `(variable)` instead.
 
-*   `backend/main.py`: Entry point for FastAPI.
-*   `backend/agent/`: ADK agent definitions.
-*   `backend/instructions/`: Prompt text files.
-*   `backend/tools/`: Python functions exposed to agents as tools.
-*   `frontend/App.tsx`: Main application component.
-*   `frontend/components/`: React UI components.
+### Runner
+```python
+async for event in runner.run_async(user_id, session_id, new_message):
+    final_result = event
+```
 
-## 6. Common Tasks
+### Tool Signatures
+ADK requires simple types. No `Annotated[Literal[...]]`.
+```python
+def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:
+    """Docstring is read by LLM."""
+    return format_as_a2ui(widget_type, props, zone="stream")
+```
 
-### Adding a New Agent
-1.  Create `backend/agent/specialists/new_agent.py`.
-2.  Create `backend/instructions/new_agent.txt`.
-3.  Register the agent in `backend/agent/genesis.py` (add to `sub_agents` list).
-4.  Export it in `backend/agent/specialists/__init__.py`.
+## Build Commands
+- `cd backend && python main.py` — FastAPI on 8000
+- `cd backend && adk web ./agent` — ADK visual testing
+- `make test` — pytest
+- `cd apps/mobile && npx expo start` — Mobile dev
 
-### Adding a New Widget
-1.  Define the widget component in `frontend/components/Widgets.tsx`.
-2.  Update `backend/tools/generate_widget.py` to support the new type (if validation logic exists there).
-3.  Update agent instructions to know when/how to call `generate_widget` with the new type.
+## Key Files
+| File | Purpose |
+|------|---------|
+| `backend/main.py` | FastAPI server, /api/chat |
+| `backend/agent/genesis.py` | Agent definition |
+| `backend/instructions/genesis_unified.txt` | All domain instructions |
+| `backend/tools/generate_widget.py` | Widget generation with zone routing |
+| `CLAUDE.md` | Complete project context |

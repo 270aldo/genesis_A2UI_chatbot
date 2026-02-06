@@ -4,6 +4,7 @@ import { Dumbbell, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { ActionButton } from '../ui';
 import { GradientCard } from '../common';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 interface Exercise {
   name: string;
@@ -43,7 +44,7 @@ export const WorkoutCard: React.FC<{
       {/* Header */}
       <View className="flex-row justify-between items-start mb-4">
         <View className="flex-1 mr-3">
-          <Text className="font-bold text-white text-base">{data.title}</Text>
+          <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
           {data.description && (
             <Text className="text-white/40 text-xs mt-1">{data.description}</Text>
           )}
@@ -97,8 +98,8 @@ export const WorkoutCard: React.FC<{
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-xs text-white font-medium">{ex.name}</Text>
-              <Text className="text-[10px] text-white/40">
+              <Text className="text-xs text-white font-medium" style={{ fontFamily: FONTS.mono }}>{ex.name}</Text>
+              <Text className="text-[10px] text-white/40" style={{ fontFamily: FONTS.mono }}>
                 {ex.sets}x{ex.reps}
                 {(ex.load || ex.weight) ? ` · ${ex.load || ex.weight}` : ''}
                 {ex.rest ? ` · Rest ${ex.rest}` : ''}

@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { CheckCircle2 } from 'lucide-react-native';
 import { GlassCard, ActionButton, GlassInput } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 interface CheckinField {
   name: string;
@@ -56,7 +57,7 @@ export const DailyCheckin: React.FC<{
       <GlassCard accentColor="#00FF88">
         <Animated.View entering={FadeIn} className="flex-row items-center gap-3 py-2">
           <CheckCircle2 size={24} color="#00FF88" />
-          <Text className="text-sm font-bold" style={{ color: '#00FF88' }}>
+          <Text className="text-sm font-bold" style={{ color: '#00FF88', fontFamily: FONTS.monoBold }}>
             Check-in Completado
           </Text>
         </Animated.View>
@@ -66,7 +67,7 @@ export const DailyCheckin: React.FC<{
 
   return (
     <GlassCard accentColor={COLORS.habits}>
-      <Text className="font-bold text-white text-sm mb-1">Daily Check-in</Text>
+      <Text className="font-bold text-white text-sm mb-1" style={{ fontFamily: FONTS.monoBold }}>Daily Check-in</Text>
       {(data.greeting || data.date) && (
         <Text className="text-[10px] text-white/40 mb-4">
           {data.greeting || data.date}

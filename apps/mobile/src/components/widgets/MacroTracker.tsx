@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { GlassCard } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -39,7 +40,7 @@ export const MacroTracker: React.FC<{
 
   return (
     <GlassCard accentColor={COLORS.nutrition}>
-      <Text className="text-sm font-bold text-white mb-4">Macros del Dia</Text>
+      <Text className="text-sm font-bold text-white mb-4" style={{ fontFamily: FONTS.monoBold }}>Macros del Dia</Text>
       <View className="flex-row justify-between">
         {MACRO_CONFIG.map((cfg) => {
           const macro = data[cfg.key as keyof MacroTrackerData];
@@ -115,7 +116,7 @@ const CircularProgress: React.FC<{
         </Svg>
         {/* Center text */}
         <View className="absolute inset-0 items-center justify-center">
-          <Text className="text-xs font-bold text-white">{current}</Text>
+          <Text className="text-xs font-bold text-white" style={{ fontFamily: FONTS.monoBold }}>{current}</Text>
           <Text className="text-[8px] text-white/30">/ {target}</Text>
         </View>
       </View>

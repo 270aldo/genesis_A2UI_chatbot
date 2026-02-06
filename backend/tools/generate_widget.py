@@ -7,6 +7,7 @@ from typing import Any
 def format_as_a2ui(
     widget_type: str,
     props: dict[str, Any],
+    zone: str = "stream",
     surface_id: str | None = None,
 ) -> list[dict]:
     """Wrap a widget payload in A2UI v0.10 message format.
@@ -39,6 +40,58 @@ def format_as_a2ui(
             },
         },
     ]
+
+
+def generate_operations(
+    widget_type: str,
+    props: dict[str, Any],
+    zone: str = "stream",
+    surface_id: str | None = None,
+) -> list[dict]:
+    """Generate A2UI zone operations in the new format (no version field, with zone)."""
+    sid = surface_id or f"surface-{uuid.uuid4().hex[:8]}"
+    return [
+        {
+            "createSurface": {
+                "surfaceId": sid,
+                "zone": zone,
+                "catalogId": "ngx.genesis.fitness",
+            },
+        },
+        {
+            "updateComponents": {
+                "surfaceId": sid,
+                "components": [{"type": widget_type, "id": f"widget-{uuid.uuid4().hex[:8]}"}],
+            },
+        },
+        {
+            "updateDataModel": {
+                "surfaceId": sid,
+                "dataModel": props,
+            },
+        },
+    ]
+
+
+def create_stream_widget(
+    widget_type: str, props: dict[str, Any], surface_id: str | None = None
+) -> list[dict]:
+    """Create a widget in the stream zone (Zone B — main chat area)."""
+    return generate_operations(widget_type, props, zone="stream", surface_id=surface_id)
+
+
+def create_context_widget(
+    widget_type: str, props: dict[str, Any], surface_id: str | None = None
+) -> list[dict]:
+    """Create a widget in the context zone (Zone A — persistent top bar)."""
+    return generate_operations(widget_type, props, zone="context", surface_id=surface_id)
+
+
+def create_overlay_widget(
+    widget_type: str, props: dict[str, Any], surface_id: str | None = None
+) -> list[dict]:
+    """Create a widget in the overlay zone (Zone C — floating above tab bar)."""
+    return generate_operations(widget_type, props, zone="overlay", surface_id=surface_id)
 
 
 def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:

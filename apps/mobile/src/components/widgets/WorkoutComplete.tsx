@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Trophy, Clock, Dumbbell, Flame, Star } from 'lucide-react-native';
 import { COLORS } from '@genesis/shared';
+import { FONTS } from '../../theme/fonts';
 import { GradientCard } from '../common';
 
 interface PRBadge {
@@ -69,7 +70,7 @@ export const WorkoutComplete: React.FC<{
         >
           <Trophy size={24} color="#22C55E" />
         </View>
-        <Text className="text-white font-bold text-base">{data.title}</Text>
+        <Text className="text-white font-bold text-base" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
         <Text className="text-white/40 text-xs mt-0.5">Workout Complete</Text>
       </View>
 
@@ -81,10 +82,10 @@ export const WorkoutComplete: React.FC<{
             className="flex-1 min-w-[30%] bg-white/5 rounded-xl p-3 items-center"
           >
             <stat.icon size={16} color={stat.color} />
-            <Text className="text-white font-bold text-sm mt-1">
+            <Text className="text-white font-bold text-sm mt-1" style={{ fontFamily: FONTS.monoBold }}>
               {stat.value}
             </Text>
-            <Text className="text-white/40 text-[10px] uppercase">
+            <Text className="text-white/40 text-[10px] uppercase" style={{ fontFamily: FONTS.mono }}>
               {stat.label}
             </Text>
           </View>

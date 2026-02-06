@@ -8,6 +8,7 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 import { GlassCard } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 import { getCategoryForWidget } from '../../utils/getCategoryColor';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -59,7 +60,7 @@ export const QuickActions: React.FC<{
   return (
     <GlassCard accentColor={COLORS.genesis}>
       {data.title && (
-        <Text className="text-sm font-semibold text-white/90 mb-3">
+        <Text className="text-sm font-semibold text-white/90 mb-3" style={{ fontFamily: FONTS.monoBold }}>
           {data.title}
         </Text>
       )}
@@ -110,6 +111,7 @@ export const QuickActions: React.FC<{
                 className="text-xs font-bold flex-1"
                 style={{
                   color: isHighlighted ? COLORS.genesis : 'rgba(255,255,255,0.9)',
+                  fontFamily: FONTS.mono,
                 }}
               >
                 {action.label}

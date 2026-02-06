@@ -25,7 +25,13 @@ from agent import root_agent
 from schemas.clipboard import MessageRole
 from schemas.request import ChatEvent, ChatRequest, EventsRequest
 from schemas.response import AgentResponse
-from tools.generate_widget import format_as_a2ui
+from tools.generate_widget import (
+    format_as_a2ui,
+    generate_operations,
+    create_stream_widget,
+    create_context_widget,
+    create_overlay_widget,
+)
 from services.auth import resolve_user_id_from_request
 from services.session_store import get_or_create_session, set_session, session_store
 from wearables import wearables_router
@@ -245,9 +251,10 @@ async def chat(request: ChatRequest, raw_request: Request):
         if request.event:
             event_widget = _build_event_widget(request.event, response)
             if event_widget:
-                payload, widgets = event_widget
+                payload, widgets, operations = event_widget
                 response.payload = payload
                 response.widgets = widgets
+                response.operations = operations
 
         widget_type = response.payload.type if response.payload else None
         clipboard.add_message(
@@ -348,10 +355,11 @@ async def receive_events(request: EventsRequest):
 
 def _build_event_widget(
     event: ChatEvent, response: AgentResponse
-) -> tuple[dict, list[dict]] | None:
+) -> tuple[dict, list[dict], list[dict]] | None:
     """Deterministically construct the correct widget for a known event type.
 
-    Returns (payload_dict, a2ui_widgets) or None if the event type is unknown.
+    Returns (payload_dict, a2ui_widgets, operations) or None if the event type
+    is unknown.
     """
     etype = event.type
     p = event.payload
@@ -377,7 +385,17 @@ def _build_event_widget(
         }
         payload = {"type": "live-session-tracker", "props": props}
         widgets = format_as_a2ui("live-session-tracker", props)
-        return payload, widgets
+        # Operations: overlay zone for live-session-tracker + context zone for training-mode-bar
+        ops = create_overlay_widget("live-session-tracker", props)
+        context_props = {
+            "exerciseName": exercises[0].get("name", "") if exercises else "",
+            "targetSets": exercises[0].get("sets", 3) if exercises else 3,
+            "targetReps": str(exercises[0].get("reps", "8-12")) if exercises else "8-12",
+            "elapsed": 0,
+            "totalSetsCompleted": 0,
+        }
+        ops.extend(create_context_widget("training-mode-bar", context_props))
+        return payload, widgets, ops
 
     if etype == "workout_completed":
         props = {
@@ -392,7 +410,10 @@ def _build_event_widget(
         }
         payload = {"type": "workout-complete", "props": props}
         widgets = format_as_a2ui("workout-complete", props)
-        return payload, widgets
+        # Operations: stream zone for workout-complete + delete overlay
+        ops = create_stream_widget("workout-complete", props)
+        ops.append({"deleteSurface": {"surfaceId": "*overlay*"}})
+        return payload, widgets, ops
 
     return None
 
@@ -544,10 +565,16 @@ def parse_agent_response(events: list) -> AgentResponse:
                     except json.JSONDecodeError:
                         pass
 
+    # Generate operations from payload if present
+    operations = None
+    if payload:
+        operations = generate_operations(payload["type"], payload.get("props", {}))
+
     return AgentResponse(
         text=text or "Respuesta procesada",
         agent=agent,
         payload=payload,
+        operations=operations,
     )
 
 

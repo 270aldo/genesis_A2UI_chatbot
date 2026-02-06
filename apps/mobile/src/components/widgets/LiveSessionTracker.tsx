@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, ScrollView } from 'react-native';
 import { Play, Check, Trophy } from 'lucide-react-native';
 import { COLORS } from '@genesis/shared';
+import { FONTS } from '../../theme/fonts';
 import { GradientCard } from '../common';
 import { ActionButton } from '../ui';
 
@@ -102,13 +103,13 @@ export const LiveSessionTracker: React.FC<{
       {/* Header with timer */}
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-1">
-          <Text className="text-white font-bold text-base">{data.title}</Text>
+          <Text className="text-white font-bold text-base" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
           <Text className="text-white/40 text-xs mt-0.5">
             {totalSetsCompleted} sets logged
           </Text>
         </View>
         <View className="bg-white/10 px-3 py-1.5 rounded-lg">
-          <Text className="text-white font-mono font-bold text-sm">
+          <Text className="text-white font-bold text-sm" style={{ fontFamily: FONTS.monoBold }}>
             {formatTime(elapsed)}
           </Text>
         </View>

@@ -11,6 +11,7 @@ import Animated, {
 import { Moon } from 'lucide-react-native';
 import { GlassCard } from '../ui';
 import { COLORS } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -56,7 +57,7 @@ export const SleepAnalysis: React.FC<{
         <View>
           <View className="flex-row items-center gap-2">
             <Moon size={16} color={COLORS.recovery} />
-            <Text className="font-bold text-white text-base">Sleep</Text>
+            <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>Sleep</Text>
           </View>
           <Text className="text-xs text-white/50 mt-0.5">
             {data.duration} · {qualityLabel}
@@ -199,7 +200,7 @@ const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
         />
       </Svg>
       <View className="absolute inset-0 items-center justify-center">
-        <Text className="text-sm font-bold text-white">{score}</Text>
+        <Text className="text-sm font-bold text-white" style={{ fontFamily: FONTS.monoBold }}>{score}</Text>
       </View>
     </View>
   );
