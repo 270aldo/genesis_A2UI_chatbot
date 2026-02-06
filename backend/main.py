@@ -23,8 +23,9 @@ from google.genai import types
 
 from agent import root_agent
 from schemas.clipboard import MessageRole
-from schemas.request import ChatRequest, EventsRequest
+from schemas.request import ChatEvent, ChatRequest, EventsRequest
 from schemas.response import AgentResponse
+from tools.generate_widget import format_as_a2ui
 from services.auth import resolve_user_id_from_request
 from services.session_store import get_or_create_session, set_session, session_store
 from wearables import wearables_router
@@ -173,7 +174,7 @@ async def chat(request: ChatRequest, raw_request: Request):
     """
     try:
         logger.info(f"Chat request: {request.message[:50]}...")
-        
+
         # Get or create ADK session
         user_id = resolve_user_id_from_request(raw_request, request.user_id)
 
@@ -182,14 +183,21 @@ async def chat(request: ChatRequest, raw_request: Request):
             user_id=user_id,
             session_id=request.session_id,
         )
-        
+
         if session is None:
             session = await session_service.create_session(
                 app_name="ngx-a2ui",
                 user_id=user_id,
                 session_id=request.session_id,
             )
-        
+
+        # Build message text — prepend event context when present
+        message_text = request.message
+        if request.event:
+            event_json = json.dumps(request.event.payload, ensure_ascii=False)
+            message_text = f"[EVENT:{request.event.type}] {event_json}\n{message_text}"
+            logger.info(f"Event attached: {request.event.type}")
+
         # Persist clipboard state (independent of ADK session)
         clipboard = await get_or_create_session(request.session_id, user_id)
         clipboard.add_message(
@@ -208,7 +216,7 @@ async def chat(request: ChatRequest, raw_request: Request):
                 if part is not None:
                     parts.append(part)
 
-        parts.append(types.Part(text=request.message))
+        parts.append(types.Part(text=message_text))
 
         user_content = types.Content(
             role="user",
@@ -233,6 +241,14 @@ async def chat(request: ChatRequest, raw_request: Request):
         response = parse_agent_response(all_events)
         logger.info(f"Response from {response.agent}: {response.text[:50]}...")
 
+        # Deterministic widget construction for known events
+        if request.event:
+            event_widget = _build_event_widget(request.event, response)
+            if event_widget:
+                payload, widgets = event_widget
+                response.payload = payload
+                response.widgets = widgets
+
         widget_type = response.payload.type if response.payload else None
         clipboard.add_message(
             MessageRole.ASSISTANT,
@@ -241,7 +257,7 @@ async def chat(request: ChatRequest, raw_request: Request):
             widget_type=widget_type,
         )
         await set_session(clipboard)
-        
+
         return response
         
     except Exception as e:
@@ -328,6 +344,57 @@ async def receive_events(request: EventsRequest):
     except Exception as e:
         logger.error(f"Events error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _build_event_widget(
+    event: ChatEvent, response: AgentResponse
+) -> tuple[dict, list[dict]] | None:
+    """Deterministically construct the correct widget for a known event type.
+
+    Returns (payload_dict, a2ui_widgets) or None if the event type is unknown.
+    """
+    etype = event.type
+    p = event.payload
+
+    if etype == "workout_started":
+        exercises = p.get("exercises", [])
+        props = {
+            "workoutId": p.get("sessionId", ""),
+            "title": p.get("title", "Workout"),
+            "exercises": [
+                {
+                    "id": str(i),
+                    "name": ex.get("name", ex.get("exercise", "")),
+                    "target": {
+                        "sets": ex.get("sets", 3),
+                        "reps": ex.get("reps", "8-12"),
+                        "rpe": ex.get("rpe"),
+                    },
+                    "setsCompleted": [],
+                }
+                for i, ex in enumerate(exercises)
+            ],
+        }
+        payload = {"type": "live-session-tracker", "props": props}
+        widgets = format_as_a2ui("live-session-tracker", props)
+        return payload, widgets
+
+    if etype == "workout_completed":
+        props = {
+            "sessionId": p.get("sessionId", ""),
+            "title": p.get("title", "Workout Complete"),
+            "totalVolume": p.get("totalVolume", 0),
+            "totalSets": p.get("totalSets", 0),
+            "totalReps": p.get("totalReps", 0),
+            "durationMins": p.get("durationMins", 0),
+            "prs": p.get("prs", []),
+            "genesisNote": response.text[:200] if response.text else "",
+        }
+        payload = {"type": "workout-complete", "props": props}
+        widgets = format_as_a2ui("workout-complete", props)
+        return payload, widgets
+
+    return None
 
 
 def parse_agent_response(events: list) -> AgentResponse:

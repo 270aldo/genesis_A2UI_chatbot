@@ -23,6 +23,19 @@ class Attachment(BaseModel):
     size: Optional[int] = Field(default=None, description="File size in bytes")
 
 
+class ChatEvent(BaseModel):
+    """Macro-action event sent alongside a chat message."""
+
+    type: str = Field(
+        ...,
+        description="Event type (e.g. workout_started, workout_completed, set_logged)",
+    )
+    payload: dict = Field(
+        default_factory=dict,
+        description="Event-specific payload data",
+    )
+
+
 class ChatRequest(BaseModel):
     """Request body for /api/chat endpoint."""
 
@@ -49,6 +62,11 @@ class ChatRequest(BaseModel):
     attachments: List[Attachment] = Field(
         default_factory=list,
         description="Optional attachments (base64)"
+    )
+
+    event: Optional[ChatEvent] = Field(
+        default=None,
+        description="Optional macro-action event for A2UI widget lifecycle",
     )
 
 
