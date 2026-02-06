@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Dumbbell, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { GlassCard, ActionButton } from '../ui';
+import { ActionButton } from '../ui';
+import { GradientCard } from '../common';
 import { COLORS } from '../../theme';
 
 interface Exercise {
@@ -25,6 +26,7 @@ interface WorkoutCardData {
   warmup?: string[];
   cooldown?: string[];
   coachNote?: string;
+  _frozen?: boolean;
 }
 
 export const WorkoutCard: React.FC<{
@@ -32,11 +34,12 @@ export const WorkoutCard: React.FC<{
   onAction?: (action: string, data?: any) => void;
 }> = ({ data: rawData, onAction }) => {
   const data = rawData as WorkoutCardData;
+  const frozen = data._frozen ?? false;
   const [showWarmup, setShowWarmup] = useState(false);
   const [showCooldown, setShowCooldown] = useState(false);
 
   return (
-    <GlassCard accentColor={COLORS.training}>
+    <GradientCard accentColor={COLORS.training} frozen={frozen}>
       {/* Header */}
       <View className="flex-row justify-between items-start mb-4">
         <View className="flex-1 mr-3">
@@ -138,20 +141,23 @@ export const WorkoutCard: React.FC<{
       )}
 
       {/* Start Button */}
-      <View className="mt-4">
-        <ActionButton
-          label="Comenzar"
-          accentColor={COLORS.training}
-          icon={<Dumbbell size={14} color="white" />}
-          onPress={() =>
-            onAction?.('start-workout', {
-              id: data.workoutId,
-              title: data.title,
-            })
-          }
-        />
-      </View>
-    </GlassCard>
+      {!frozen && (
+        <View className="mt-4">
+          <ActionButton
+            label="Comenzar"
+            accentColor={COLORS.training}
+            icon={<Dumbbell size={14} color="white" />}
+            onPress={() =>
+              onAction?.('start-workout', {
+                sessionId: data.workoutId,
+                title: data.title,
+                exercises: data.exercises,
+              })
+            }
+          />
+        </View>
+      )}
+    </GradientCard>
   );
 };
 

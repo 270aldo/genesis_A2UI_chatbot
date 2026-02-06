@@ -1,6 +1,8 @@
 import { registerWidget } from './A2UIMediator';
 import { QuickActions } from './QuickActions';
 import { WorkoutCard } from './WorkoutCard';
+import { LiveSessionTracker } from './LiveSessionTracker';
+import { WorkoutComplete } from './WorkoutComplete';
 import { MealPlan } from './MealPlan';
 import { MacroTracker } from './MacroTracker';
 import { RecoveryScore } from './RecoveryScore';
@@ -13,6 +15,8 @@ import { InsightCard } from './InsightCard';
 registerWidget('quick-actions', QuickActions);
 registerWidget('genesis-quick-actions', QuickActions);
 registerWidget('workout-card', WorkoutCard);
+registerWidget('live-session-tracker', LiveSessionTracker);
+registerWidget('workout-complete', WorkoutComplete);
 registerWidget('meal-plan', MealPlan);
 registerWidget('macro-tracker', MacroTracker);
 registerWidget('recovery-score', RecoveryScore);
