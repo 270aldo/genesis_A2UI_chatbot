@@ -29,6 +29,7 @@ from services.auth import resolve_user_id_from_request
 from services.session_store import get_or_create_session, set_session, session_store
 from wearables import wearables_router
 from voice import voice_router
+from routers.v1 import v1_router
 
 MAX_ATTACHMENTS = 4
 
@@ -142,9 +143,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include voice router for WebSocket endpoint
+# Include routers
 app.include_router(voice_router)
 app.include_router(wearables_router)
+app.include_router(v1_router)
 
 
 @app.get("/health")
