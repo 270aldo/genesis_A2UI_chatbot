@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { SURFACE, TEXT as TEXT_COLORS } from '../../theme';
+import { SURFACE } from '../../theme';
 import {
   Home,
   Dumbbell,
@@ -22,6 +22,9 @@ interface TabConfig {
   label: string;
   color: string;
 }
+
+const ACTIVE_TINT = '#b39aff';
+const INACTIVE_TINT = '#6b6b7b';
 
 const TAB_CONFIG: Record<string, TabConfig> = {
   index: { icon: Home, label: 'Home', color: '#6D00FF' },
@@ -86,16 +89,11 @@ export const CustomTabBar: React.FC<BottomTabBarProps> = ({
             >
               <Icon
                 size={22}
-                color={isFocused ? config.color : TEXT_COLORS.disabled}
+                color={isFocused ? config.color : INACTIVE_TINT}
                 strokeWidth={isFocused ? 2.5 : 1.5}
               />
               {isFocused && (
-                <Text
-                  style={[styles.label, { color: config.color }]}
-                  numberOfLines={1}
-                >
-                  {config.label}
-                </Text>
+                <View style={[styles.dot, { backgroundColor: ACTIVE_TINT }]} />
               )}
             </Pressable>
           );
@@ -131,10 +129,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
 });
