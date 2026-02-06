@@ -1,19 +1,19 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import { View, Text, FlatList } from 'react-native';
-import { Message } from '@genesis/shared';
 import { COLORS } from '../../theme';
 import { MessageBubble } from './MessageBubble';
+import type { ChatMessage } from '../../lib/a2ui/types';
 
 interface ChatListProps {
-  messages: Message[];
+  messages: ChatMessage[];
   onAction?: (action: string, data?: Record<string, unknown>) => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({ messages, onAction }) => {
-  const listRef = useRef<FlatList<Message>>(null);
+  const listRef = useRef<FlatList<ChatMessage>>(null);
 
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => (
+    ({ item }: { item: ChatMessage }) => (
       <MessageBubble message={item} onAction={onAction} />
     ),
     [onAction]
@@ -31,7 +31,7 @@ export const ChatList: React.FC<ChatListProps> = ({ messages, onAction }) => {
       data={reversedMessages}
       renderItem={renderItem}
       inverted
-      keyExtractor={(_, index) => String(index)}
+      keyExtractor={(item) => item.id}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
       showsVerticalScrollIndicator={false}
     />

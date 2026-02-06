@@ -1,17 +1,19 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { Message } from '@genesis/shared';
+import type { WidgetType } from '@genesis/shared';
 import { COLORS } from '../../theme';
 import { WidgetMessage } from './WidgetMessage';
+import type { ChatMessage } from '../../lib/a2ui/types';
 
 interface MessageBubbleProps {
-  message: Message;
+  message: ChatMessage;
   onAction?: (action: string, data?: Record<string, unknown>) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAction }) => {
   const isUser = message.role === 'user';
+  const isFrozen = message.widget?.state === 'frozen';
 
   return (
     <Animated.View
@@ -23,22 +25,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAction 
         <View
           className={`max-w-[85%] rounded-2xl px-4 py-3 ${
             isUser
-              ? 'bg-genesis/20 rounded-br-sm'
+              ? 'rounded-br-sm'
               : 'bg-white/5 rounded-bl-sm'
           }`}
           style={isUser ? { backgroundColor: `${COLORS.genesis}33` } : undefined}
         >
           <MessageText text={message.text} isUser={isUser} />
-          <Text className="text-text-muted text-[10px] mt-1 self-end">
+          <Text className="text-white/20 text-[10px] mt-1 self-end">
             {formatTime(message.timestamp)}
           </Text>
         </View>
       ) : null}
 
-      {/* Widget payload */}
-      {message.payload && (
-        <View className="w-full mt-2">
-          <WidgetMessage payload={message.payload} onAction={onAction} />
+      {/* Widget from ChatMessage.widget */}
+      {message.widget && (
+        <View className={`w-full mt-2 ${isFrozen ? 'opacity-60' : ''}`} pointerEvents={isFrozen ? 'none' : 'auto'}>
+          <WidgetMessage
+            payload={{
+              type: message.widget.type as WidgetType,
+              props: {
+                ...message.widget.props,
+                _frozen: isFrozen,
+              } as Record<string, unknown>,
+            }}
+            onAction={onAction}
+          />
         </View>
       )}
     </Animated.View>
