@@ -7,6 +7,9 @@ const DEFAULT_API_URL = Platform.select({
   default: 'http://localhost:8000',
 });
 
+export const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL || 'http://localhost:8000';
+
 export const initializeApi = () => {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
   setApiUrl(apiUrl);

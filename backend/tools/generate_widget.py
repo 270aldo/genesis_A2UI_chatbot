@@ -1,6 +1,44 @@
 """Widget generation tool for NGX agents."""
 
+import uuid
 from typing import Any
+
+
+def format_as_a2ui(
+    widget_type: str,
+    props: dict[str, Any],
+    surface_id: str | None = None,
+) -> list[dict]:
+    """Wrap a widget payload in A2UI v0.10 message format.
+
+    Returns a list of A2UI messages (createSurface, updateComponents, updateDataModel).
+    """
+    sid = surface_id or f"surface-{uuid.uuid4().hex[:8]}"
+    return [
+        {
+            "version": "v0.10",
+            "createSurface": {
+                "surfaceId": sid,
+                "catalogId": "ngx.genesis.fitness",
+            },
+        },
+        {
+            "version": "v0.10",
+            "updateComponents": {
+                "surfaceId": sid,
+                "components": [
+                    {"type": widget_type, "id": f"widget-{uuid.uuid4().hex[:8]}"}
+                ],
+            },
+        },
+        {
+            "version": "v0.10",
+            "updateDataModel": {
+                "surfaceId": sid,
+                "dataModel": props,
+            },
+        },
+    ]
 
 
 def generate_widget(widget_type: str, props: dict[str, Any]) -> dict:

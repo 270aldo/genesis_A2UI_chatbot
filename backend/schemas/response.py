@@ -44,3 +44,8 @@ class AgentResponse(BaseModel):
         default=None,
         description="Optional widget payload for A2UI rendering",
     )
+
+    widgets: Optional[list[dict]] = Field(
+        default=None,
+        description="Optional A2UI v0.10 widget messages for mobile client",
+    )
