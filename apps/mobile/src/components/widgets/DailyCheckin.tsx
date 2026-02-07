@@ -67,7 +67,7 @@ export const DailyCheckin: React.FC<{
 
   return (
     <GlassCard accentColor={COLORS.habits}>
-      <Text className="font-bold text-white text-sm mb-1" style={{ fontFamily: FONTS.monoBold }}>Daily Check-in</Text>
+      <Text className="font-bold text-white text-sm mb-1" style={{ fontFamily: FONTS.monoBold }}>Check-in Diario</Text>
       {(data.greeting || data.date) && (
         <Text className="text-[10px] text-white/40 mb-4">
           {data.greeting || data.date}

@@ -102,7 +102,7 @@ export const WorkoutCard: React.FC<{
               <Text className="text-[10px] text-white/40" style={{ fontFamily: FONTS.mono }}>
                 {ex.sets}x{ex.reps}
                 {(ex.load || ex.weight) ? ` · ${ex.load || ex.weight}` : ''}
-                {ex.rest ? ` · Rest ${ex.rest}` : ''}
+                {ex.rest ? ` · Descanso ${ex.rest}` : ''}
               </Text>
               {ex.notes && (
                 <Text className="text-[10px] text-white/30 italic mt-0.5">

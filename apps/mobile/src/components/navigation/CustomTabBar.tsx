@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { SURFACE } from '../../theme';
+import { FONTS } from '../../theme/fonts';
 import {
   Home,
   Dumbbell,
@@ -27,10 +28,10 @@ const ACTIVE_TINT = '#b39aff';
 const INACTIVE_TINT = '#6b6b7b';
 
 const TAB_CONFIG: Record<string, TabConfig> = {
-  index: { icon: Home, label: 'Home', color: '#6D00FF' },
-  train: { icon: Dumbbell, label: 'Train', color: '#EF4444' },
+  index: { icon: Home, label: 'Inicio', color: '#6D00FF' },
+  train: { icon: Dumbbell, label: 'Entrena', color: '#EF4444' },
   fuel: { icon: Apple, label: 'Fuel', color: '#22C55E' },
-  mind: { icon: Brain, label: 'Mind', color: '#A855F7' },
+  mind: { icon: Brain, label: 'Mente', color: '#A855F7' },
   track: { icon: BarChart3, label: 'Track', color: '#3B82F6' },
 };
 
@@ -92,6 +93,14 @@ export const CustomTabBar: React.FC<BottomTabBarProps> = ({
                 color={isFocused ? config.color : INACTIVE_TINT}
                 strokeWidth={isFocused ? 2.5 : 1.5}
               />
+              <Text style={{
+                fontFamily: FONTS.monoMedium,
+                fontSize: 10,
+                color: isFocused ? config.color : INACTIVE_TINT,
+                marginTop: 2,
+              }}>
+                {config.label}
+              </Text>
               {isFocused && (
                 <View style={[styles.dot, { backgroundColor: ACTIVE_TINT }]} />
               )}

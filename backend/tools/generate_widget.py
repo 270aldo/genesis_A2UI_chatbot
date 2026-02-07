@@ -10,9 +10,10 @@ def format_as_a2ui(
     zone: str = "stream",
     surface_id: str | None = None,
 ) -> list[dict]:
-    """Wrap a widget payload in A2UI v0.10 message format.
+    """Wrap a widget payload in A2UI v0.10 message format (LEGACY).
 
-    Returns a list of A2UI messages (createSurface, updateComponents, updateDataModel).
+    NOTE: zone parameter is accepted for API consistency but NOT included
+    in the v0.10 output. For zone-aware operations, use generate_operations().
     """
     sid = surface_id or f"surface-{uuid.uuid4().hex[:8]}"
     return [

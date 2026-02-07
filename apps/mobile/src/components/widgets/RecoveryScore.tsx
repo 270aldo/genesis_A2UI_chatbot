@@ -66,7 +66,7 @@ export const RecoveryScore: React.FC<{
       {/* Header with score ring */}
       <View className="flex-row items-center justify-between mb-4">
         <View>
-          <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>Recovery Score</Text>
+          <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>Score de Recuperación</Text>
           <Text className="text-xs text-white/50 capitalize">{data.status}</Text>
         </View>
         <ScoreRing score={data.score} color={statusColor} />

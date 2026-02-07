@@ -105,7 +105,7 @@ export const LiveSessionTracker: React.FC<{
         <View className="flex-1">
           <Text className="text-white font-bold text-base" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
           <Text className="text-white/40 text-xs mt-0.5">
-            {totalSetsCompleted} sets logged
+            {totalSetsCompleted} series registradas
           </Text>
         </View>
         <View className="bg-white/10 px-3 py-1.5 rounded-lg">
@@ -141,7 +141,7 @@ export const LiveSessionTracker: React.FC<{
               </View>
 
               <Text className="text-white/40 text-xs mb-3">
-                Target: {currentExercise.target.sets} x {currentExercise.target.reps}
+                Objetivo: {currentExercise.target.sets} x {currentExercise.target.reps}
                 {currentExercise.target.rpe ? ` @ RPE ${currentExercise.target.rpe}` : ''}
               </Text>
 
@@ -242,7 +242,7 @@ export const LiveSessionTracker: React.FC<{
           <View className="flex-row gap-3">
             <View className="flex-1">
               <ActionButton
-                label="LOG SET"
+                label="REGISTRAR"
                 accentColor={COLORS.training}
                 icon={<Play size={14} color="white" />}
                 onPress={handleLogSet}
@@ -250,7 +250,7 @@ export const LiveSessionTracker: React.FC<{
             </View>
             <View className="flex-1">
               <ActionButton
-                label="DONE"
+                label="LISTO"
                 accentColor="rgba(255,255,255,0.2)"
                 icon={<Check size={14} color="white" />}
                 onPress={handleDone}

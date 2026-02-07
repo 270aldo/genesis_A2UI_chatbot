@@ -57,7 +57,7 @@ export const SleepAnalysis: React.FC<{
         <View>
           <View className="flex-row items-center gap-2">
             <Moon size={16} color={COLORS.recovery} />
-            <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>Sleep</Text>
+            <Text className="font-bold text-white text-base" style={{ fontFamily: FONTS.monoBold }}>Sueño</Text>
           </View>
           <Text className="text-xs text-white/50 mt-0.5">
             {data.duration} · {qualityLabel}

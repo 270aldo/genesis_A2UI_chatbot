@@ -32,19 +32,19 @@ export const WorkoutComplete: React.FC<{
 
   const stats = [
     {
-      label: 'Volume',
+      label: 'Volumen',
       value: `${Math.round(data.totalVolume).toLocaleString()} kg`,
       icon: Dumbbell,
       color: COLORS.training,
     },
     {
-      label: 'Duration',
+      label: 'Duración',
       value: `${data.durationMins} min`,
       icon: Clock,
       color: '#0EA5E9',
     },
     {
-      label: 'Sets',
+      label: 'Series',
       value: String(data.totalSets),
       icon: Flame,
       color: '#FBBF24',
@@ -71,7 +71,7 @@ export const WorkoutComplete: React.FC<{
           <Trophy size={24} color="#22C55E" />
         </View>
         <Text className="text-white font-bold text-base" style={{ fontFamily: FONTS.monoBold }}>{data.title}</Text>
-        <Text className="text-white/40 text-xs mt-0.5">Workout Complete</Text>
+        <Text className="text-white/40 text-xs mt-0.5">Entreno Completo</Text>
       </View>
 
       {/* Stats grid */}
@@ -96,7 +96,7 @@ export const WorkoutComplete: React.FC<{
       {data.prs && data.prs.length > 0 && (
         <View className="mb-4">
           <Text className="text-white/50 text-[10px] uppercase font-bold mb-2">
-            Personal Records
+            Records Personales
           </Text>
           {data.prs.map((pr, i) => (
             <View

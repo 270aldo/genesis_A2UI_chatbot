@@ -24,7 +24,7 @@ export const FallbackWidget: React.FC<FallbackWidgetProps> = ({ type }) => {
           </Text>
         </View>
         <Text className="text-white/40 text-xs">
-          Widget not yet available on mobile
+          Widget no disponible aún en móvil
         </Text>
       </View>
     </GlassCard>
