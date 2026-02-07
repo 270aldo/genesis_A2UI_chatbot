@@ -61,82 +61,19 @@ supabase migration list           # Check status
 
 **Zone Routing**: Backend sends `zone` field per operation. Frontend SurfaceStore routes to correct zone component.
 
-## Phase 1.5: Zones Architecture (Upcoming Implementation)
+## Phase 1.5: Zones Architecture (IMPLEMENTED — `12dd821`, audited `d71cd98`)
 
-### Overview
-
-Phase 1.5 introduces formal **Zone State Management** where each zone is a fully independent render tree with its own lifecycle. This replaces ad-hoc zone rendering with a unified, type-safe architecture.
+Zone State Management with 3 independent render trees, each with its own lifecycle.
 
 ### Zone Definitions
 
-#### Zone A: ContextBar (Persistent/Top)
-- **Position**: Fixed top, ~80px height
-- **Purpose**: Persistent contextual information always visible
-- **Surface Types**: workout-summary, macro-tracker, active-plan, daily-goal, streak-tracker
-- **Max Surfaces**: 1-2 (stack vertically if multiple)
-- **Lifecycle**: Persists across navigation, survives chat clear
-- **Example Operations**:
-  ```json
-  {
-    "type": "createSurface",
-    "zone": "context",
-    "widgetType": "workout-summary",
-    "dataModel": { "reps": 3, "weight": 185 }
-  }
-  ```
+| Zone | Position | Lifecycle | Clear on Chat |
+|------|----------|-----------|---------------|
+| **A (ContextBar)** | Fixed top ~80px | Persists across navigation | No |
+| **B (ChatStream)** | Flex-1 FlatList | Survives tab nav (frozen) | Yes |
+| **C (FloatingWidget)** | Absolute overlay above TabBar | Manually dismissible | No |
 
-#### Zone B: ChatStream (Main Content)
-- **Position**: Flex-1 between ContextBar and TabBar
-- **Purpose**: Main conversational interface + inline rich widgets
-- **Surface Types**: message cards, checklist, meal-plan, insight-card, quote-card, recipe-card
-- **Lifecycle**: Cleared on "Clear Chat", survives tab navigation (frozen)
-- **Rendering**: Each message in FlatList with optional attached surface
-- **Example Operations**:
-  ```json
-  {
-    "type": "createSurface",
-    "zone": "stream",
-    "widgetType": "checklist",
-    "dataModel": { "items": [...] }
-  }
-  ```
-
-#### Zone C: FloatingWidget (Overlay)
-- **Position**: Absolute overlay, above TabBar, ~120px height
-- **Purpose**: Real-time tracking, timers, quick-action prompts
-- **Surface Types**: live-session-tracker, timer, quick-actions, mini-recap
-- **Lifecycle**: Floating, persistent across tabs, manually dismissible
-- **Z-Index**: Above TabBar, below modals
-- **Example Operations**:
-  ```json
-  {
-    "type": "createSurface",
-    "zone": "overlay",
-    "widgetType": "live-session-tracker",
-    "dataModel": { "duration": 1200, "reps": 5 }
-  }
-  ```
-
-### Phase 1.5 Implementation Phases
-
-1. **Phase 1a** (Foundation): Zone state containers, renderer registration, operation dispatch
-2. **Phase 1b** (Context Bar): Implement ContextBar, test workout-summary + macro-tracker
-3. **Phase 1c** (Chat Stream): Integrate ChatStream zones, test message-surface routing
-4. **Phase 1d** (Overlay): Implement FloatingWidget, test live-session-tracker + timers
-5. **Phase 1e** (Lifecycle): Add freeze/dismiss, chat clear behavior, persistence
-6. **Phase 1f** (Polish): Animation, transitions, edge cases
-7. **Phase 1g** (Testing): Integration tests, edge case coverage
-8. **Phase 1h** (Documentation): Update README, add zone routing guide
-
-### Zone-Specific Rendering Rules
-
-| Zone | FlatList? | Scrollable? | Max Width | Overflow | Clear on Chat |
-|------|-----------|-----------|-----------|----------|---------------|
-| A (ContextBar) | No (Stack) | No | 100% | Stack | No |
-| B (ChatStream) | Yes | Yes | 92% + margin | Scroll | Yes |
-| C (Overlay) | No (Absolute) | No | 90% + center | Dismiss | No |
-
-### Data Flow for Phase 1.5
+### Data Flow
 
 ```
 Backend Response (zone: "context" | "stream" | "overlay")
@@ -145,29 +82,10 @@ A2UI Interpreter (src/lib/a2ui/interpreter.ts)
        ↓
 SurfaceStore.addSurface(zone, surfaceData)
        ↓
-Zone Renderer (ContextBar / ChatStream / FloatingWidget)
+Zone Renderer (ContextBar / ChatList / FloatingWidget)
        ↓
 SurfaceRenderer → A2UIMediator → Widget Component
 ```
-
-### New/Modified Files for Phase 1.5
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `src/stores/surface-store.ts` | SurfaceStore with zone partitioning | Modify |
-| `src/lib/a2ui/zone-manager.ts` | Zone lifecycle + routing | NEW |
-| `src/components/zones/ContextBar.tsx` | Zone A implementation | Implement |
-| `src/components/zones/ChatStream.tsx` | Zone B with message-surface routing | Enhance |
-| `src/components/zones/FloatingWidget.tsx` | Zone C overlay | Implement |
-| `src/components/zones/ZoneController.tsx` | Master zone orchestrator | NEW |
-| `src/components/widgets/SurfaceRenderer.tsx` | Zone-aware renderer | Enhance |
-| `src/lib/a2ui/interpreter.ts` | Zone dispatch logic | Enhance |
-
-### Backward Compatibility Notes
-
-- Existing widgets continue to work; no breaking changes to widget interface
-- Old surface data without zone field defaults to "stream"
-- All existing surface types supported in all zones (though not all combinations are UI-sensible)
 
 ## Response Format (CRITICAL)
 
@@ -235,17 +153,20 @@ Backend `/api/chat` returns:
 |------|---------|
 | `src/lib/a2ui/interpreter.ts` | interpretResponse() — processes all operations |
 | `src/lib/a2ui/types.ts` | Surface, A2UIOperation, ChatMessage types |
-| `src/lib/a2ui/zone-manager.ts` | Zone lifecycle + routing (Phase 1.5) |
+| `src/lib/a2ui/parser.ts` | Legacy A2UI v0.10 message parser |
+| `src/lib/a2ui/event-emitter.ts` | Widget action event bus |
 | `src/components/widgets/A2UIMediator.tsx` | Widget registry + FallbackWidget |
-| `src/components/widgets/SurfaceRenderer.tsx` | Renders surface by widgetType |
 
-**Zone Components**
+**Chat & Zone Components** (`src/components/chat/`)
 | File | Purpose |
 |------|---------|
-| `src/components/zones/ContextBar.tsx` | Zone A — persistent top bar |
-| `src/components/zones/ChatStream.tsx` | Zone B — main chat content |
-| `src/components/zones/FloatingWidget.tsx` | Zone C — overlay above tabs |
-| `src/components/zones/ZoneController.tsx` | Master zone orchestrator (Phase 1.5) |
+| `src/components/chat/ContextBar.tsx` | Zone A — persistent top bar |
+| `src/components/chat/ChatList.tsx` | Zone B — main chat FlatList |
+| `src/components/chat/FloatingWidget.tsx` | Zone C — overlay above tabs |
+| `src/components/chat/SurfaceRenderer.tsx` | Renders surface by widgetType |
+| `src/components/chat/MessageBubble.tsx` | Individual message rendering |
+| `src/components/chat/ChatInput.tsx` | Chat text input + send |
+| `src/components/chat/WidgetMessage.tsx` | Message with attached widget |
 
 **Widget Components** (src/components/widgets/)
 WorkoutCard, LiveSessionTracker, MealPlan, MacroTracker, Checklist, DailyCheckin, HabitStreak, QuoteCard, RecipeCard, InsightCard, ProgressDashboard, BodyCompVisualizer, PlateCalculator, QuickActions
@@ -356,12 +277,10 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 
 | Document | Purpose |
 |----------|---------|
-| `docs/plans/2026-02-06-a2ui-zones-design.md` | Architecture design (validated) |
-| `docs/plans/2026-02-06-a2ui-zones-implementation-plan.md` | 8-phase implementation plan (Phase 1.5) |
-| `docs/plans/2026-02-06-a2ui-zones-master-prompt.md` | Self-contained master prompt |
-| `docs/plans/2026-02-06-claude-code-audit-report.md` | Phase 1 audit results |
-| `docs/plans/2026-01-16-voice-engine-design.md` | Voice Engine (Sprint 2) |
+| `docs/plans/2026-01-16-voice-engine-design.md` | Voice Engine (Sprint 2 — not yet implemented) |
 | `docs/wearables/GARMIN_INTEGRATION.md` | Garmin API guide (future) |
+
+**Archived** (completed work in `docs/archive/`): Phase 1 audit, Phase 1.5 zones design/plan/master-prompt/audit, V3 evolution plan, professional analysis, training flow design.
 
 ## Quick Reference: When to Create/Update Surfaces
 
@@ -377,6 +296,6 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 
 ---
 
-**Last Updated**: 2026-02-06
-**Applicable Versions**: V4 Architecture + Phase 1.5 Zones (pre-implementation)
+**Last Updated**: 2026-02-07
+**Applicable Versions**: V4 Architecture + Phase 1.5 Zones (implemented + audited)
 **Maintained by**: GENESIS Platform Team
